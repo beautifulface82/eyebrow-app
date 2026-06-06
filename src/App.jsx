@@ -1,4 +1,4 @@
-const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+const ANTHROPIC_API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY || "";
 import { useState, useRef } from "react";
 
 const Dots = ({ value, max = 5 }) => (
