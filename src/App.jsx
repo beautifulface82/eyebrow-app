@@ -148,7 +148,7 @@ export default function App() {
         r.onerror = rej;
       });
 
-      const resp = await fetch("https://cors-anywhere.herokuapp.com/https://api.anthropic.com/v1/messages", {
+      const resp = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
