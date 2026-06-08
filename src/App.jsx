@@ -1,4 +1,4 @@
-const ANTHROPIC_API_KEY = "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";
+
 import { useState, useRef, useEffect, useCallback } from "react";
 
 // ── 눈썹 모양별 베지어 커브 파라미터 ──────────────────────────
