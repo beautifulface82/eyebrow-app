@@ -95,8 +95,8 @@ export default function App() {
     const lp = toPixel(leftEye);
     const rp = toPixel(rightEye);
 
-    drawBrow(ctx, lp.x1, lp.y1, lp.x2, lp.y2, style, browThickness, browColor.replace("#", ""), overlayAlpha);
-    drawBrow(ctx, rp.x1, rp.y1, rp.x2, rp.y2, style, browThickness, browColor.replace("#", ""), overlayAlpha);
+    drawBrow(ctx, lp.x1, lp.y1, lp.x2, lp.y2, style, browThickness, browColor, overlayAlpha);
+    drawBrow(ctx, rp.x1, rp.y1, rp.x2, rp.y2, style, browThickness, browColor, overlayAlpha);
   }, [analysisResult, selectedStyle, overlayAlpha, browColor, browThickness]);
 
   useEffect(() => { renderOverlay(); }, [renderOverlay]);
