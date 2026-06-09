@@ -36,12 +36,11 @@ function drawBrow(ctx, x1, y1, x2, y2, style, thickness, color, alpha) {
   topPath.closePath();
 
   const grad = ctx.createLinearGradient(sx, 0, ex, 0);
-  grad.addColorStop(0,    "#" + color + "00");
-  grad.addColorStop(0.15, "#" + color + "cc");
-  grad.addColorStop(0.5,  "#" + color + "ff");
-  grad.addColorStop(0.85, "#" + color + "bb");
-  grad.addColorStop(1,    "#" + color + "00");
-
+  grad.addColorStop(0,    color + "00");
+  grad.addColorStop(0.15, color + "cc");
+  grad.addColorStop(0.5,  color + "ff");
+  grad.addColorStop(0.85, color + "bb");
+  grad.addColorStop(1,    color + "00");
   ctx.fillStyle = grad;
   ctx.filter = "blur(1.5px)";
   ctx.fill(topPath);
@@ -95,8 +94,8 @@ export default function App() {
     const lp = toPixel(leftEye);
     const rp = toPixel(rightEye);
 
-    drawBrow(ctx, lp.x1, lp.y1, lp.x2, lp.y2, style, browThickness, browColor, overlayAlpha);
-    drawBrow(ctx, rp.x1, rp.y1, rp.x2, rp.y2, style, browThickness, browColor, overlayAlpha);
+   drawBrow(ctx, lp.x1, lp.y1, lp.x2, lp.y2, style, browThickness, browColor.replace("#", ""), overlayAlpha);
+   drawBrow(ctx, rp.x1, rp.y1, rp.x2, rp.y2, style, browThickness, browColor.replace("#", ""), overlayAlpha);
   }, [analysisResult, selectedStyle, overlayAlpha, browColor, browThickness]);
 
   useEffect(() => { renderOverlay(); }, [renderOverlay]);
