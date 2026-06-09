@@ -150,7 +150,7 @@ export default function App() {
   },    
         body: JSON.stringify({
           // ⭕ [수정 완료] 클로드의 상상 속 이름이 아닌, 실제 안드로픽 공식 마스터 모델명 적용!
-          model: "claude-3-5-sonnet-20241022",
+          model: "claude-sonnet-4-5"
           max_tokens: 1000,
           messages: [{
             role: "user",
