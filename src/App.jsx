@@ -146,7 +146,6 @@ export default function App() {
           "Content-Type": "application/json",
           "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
           "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
         },
         body: JSON.stringify({
           // ⭕ [수정 완료] 클로드의 상상 속 이름이 아닌, 실제 안드로픽 공식 마스터 모델명 적용!
