@@ -140,13 +140,14 @@ export default function App() {
       });
 
       // ⭕ [수정 완료] 지저분한 외부 주소를 걷어내고 정석 프록시 주소로 세팅!
-      const resp = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
+     const resp = await fetch("https://api.anthropic.com/v1/messages", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true"
+  },    
         body: JSON.stringify({
           // ⭕ [수정 완료] 클로드의 상상 속 이름이 아닌, 실제 안드로픽 공식 마스터 모델명 적용!
           model: "claude-3-5-sonnet-20241022",
