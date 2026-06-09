@@ -54,11 +54,11 @@ function drawBrow(ctx, x1, y1, x2, y2, style, thickness, color, alpha) {
   topPath.closePath();
 
   const grad = ctx.createLinearGradient(sx, 0, ex, 0);
-  grad.addColorStop(0, color + "00");
-  grad.addColorStop(0.15, color + "cc");
-  grad.addColorStop(0.5, color + "ff");
-  grad.addColorStop(0.85, color + "bb");
-  grad.addColorStop(1, color + "00");
+grad.addColorStop(0, "#" + color + "00");
+grad.addColorStop(0.15, "#" + color + "cc");
+grad.addColorStop(0.5, "#" + color + "ff");
+grad.addColorStop(0.85, "#" + color + "bb");
+grad.addColorStop(1, "#" + color + "00");
 
   ctx.fillStyle = grad;
   ctx.filter = "blur(1.5px)";
