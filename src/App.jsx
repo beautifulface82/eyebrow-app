@@ -13,11 +13,10 @@ const BROW_STYLES = {
 // Canvas에 눈썹 그리기
 function drawBrow(ctx, x1, y1, x2, y2, style, thickness, color, alpha) {
   const W = x2 - x1;
-  const H = y2 - y1; 
+  const H = y2 - y1;
   const p = BROW_STYLES[style] || BROW_STYLES["소프트 세미아치"];
   const browThick = H * 0.32 * thickness;
-  const browY = y1 - H * 0.55; 
-
+  const browY = y1 - H * 0.55;
   const sx = x1 + W * 0.02;
   const sy = browY + H * p.startDip;
   const ex = x2 + W * 0.08;
@@ -30,35 +29,18 @@ function drawBrow(ctx, x1, y1, x2, y2, style, thickness, color, alpha) {
 
   const topPath = new Path2D();
   topPath.moveTo(sx, sy - browThick * 0.3);
-  topPath.bezierCurveTo(
-    sx + W * 0.3, sy - browThick * 0.5,
-    px - W * 0.1, py - browThick * 0.6,
-    px, py - browThick * 0.5
-  );
-  topPath.bezierCurveTo(
-    px + W * 0.1, py - browThick * 0.4,
-    ex - W * 0.15, ey - browThick * 0.1,
-    ex, ey
-  );
-
-  topPath.bezierCurveTo(
-    ex - W * 0.15, ey + browThick * 0.6,
-    px + W * 0.1, py + browThick * 0.5,
-    px, py + browThick * 0.5
-  );
-  topPath.bezierCurveTo(
-    px - W * 0.1, py + browThick * 0.6,
-    sx + W * 0.25, sy + browThick * 0.7,
-    sx, sy + browThick * 0.4
-  );
+  topPath.bezierCurveTo(sx + W*0.3, sy - browThick*0.5, px - W*0.1, py - browThick*0.6, px, py - browThick*0.5);
+  topPath.bezierCurveTo(px + W*0.1, py - browThick*0.4, ex - W*0.15, ey - browThick*0.1, ex, ey);
+  topPath.bezierCurveTo(ex - W*0.15, ey + browThick*0.6, px + W*0.1, py + browThick*0.5, px, py + browThick*0.5);
+  topPath.bezierCurveTo(px - W*0.1, py + browThick*0.6, sx + W*0.25, sy + browThick*0.7, sx, sy + browThick*0.4);
   topPath.closePath();
 
   const grad = ctx.createLinearGradient(sx, 0, ex, 0);
-grad.addColorStop(0, "#" + color + "00");
-grad.addColorStop(0.15, "#" + color + "cc");
-grad.addColorStop(0.5, "#" + color + "ff");
-grad.addColorStop(0.85, "#" + color + "bb");
-grad.addColorStop(1, "#" + color + "00");
+  grad.addColorStop(0,    "#" + color + "00");
+  grad.addColorStop(0.15, "#" + color + "cc");
+  grad.addColorStop(0.5,  "#" + color + "ff");
+  grad.addColorStop(0.85, "#" + color + "bb");
+  grad.addColorStop(1,    "#" + color + "00");
 
   ctx.fillStyle = grad;
   ctx.filter = "blur(1.5px)";
@@ -66,7 +48,6 @@ grad.addColorStop(1, "#" + color + "00");
   ctx.filter = "none";
   ctx.restore();
 }
-
 export default function App() {
   const [phase, setPhase] = useState("upload");
   const [imgSrc, setImgSrc] = useState(null);
