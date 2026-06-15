@@ -1,105 +1,109 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-/**
- * 헤어스트록/엠보눈썹 레퍼런스 기반 각도:
- * - 안쪽(코): 약 50° (위로 + 살짝 바깥)
- * - 중간:     약 22° (눕혀서 바깥으로)
- * - 꼬리:     약  5° (거의 수평, 바깥으로 쭉)
- */
+// ── 얼굴형별 눈썹 아치 프로필 ─────────────────────────────
 const ARCH = {
-  "각진 아치형":     { arch: 0.65, peak: 0.65 },
-  "소프트 세미아치": { arch: 0.45, peak: 0.63 },
-  "내추럴 아치형":   { arch: 0.32, peak: 0.62 },
-  "자연스러운 아치형":{ arch: 0.38, peak: 0.63 },
-  "부드러운 아치형": { arch: 0.26, peak: 0.60 },
-  "평평한 일자형":   { arch: 0.10, peak: 0.55 },
+  "각진 아치형":      { archH: 0.68, peakAt: 0.65 },
+  "소프트 세미아치":  { archH: 0.48, peakAt: 0.63 },
+  "내추럴 아치형":    { archH: 0.35, peakAt: 0.62 },
+  "자연스러운 아치형":{ archH: 0.40, peakAt: 0.63 },
+  "부드러운 아치형":  { archH: 0.28, peakAt: 0.60 },
+  "평평한 일자형":    { archH: 0.10, peakAt: 0.55 },
 };
 
-// ── 눈 바운딩박스 → 눈썹 좌표 변환 ─────────────────────────
+// ── 눈 좌표 → 눈썹 좌표 변환 (눈 위 적절한 간격) ─────────
 function eyeToBrow(eye, iw, ih) {
-  const ex1 = eye.x1 * iw, ey1 = eye.y1 * ih;
-  const ex2 = eye.x2 * iw, ey2 = eye.y2 * ih;
-  const eH  = ey2 - ey1;           // 눈 세로 크기
-  const eW  = ex2 - ex1;           // 눈 가로 크기
-  const eCY = (ey1 + ey2) / 2;     // 눈 중심 y
+  const ex1 = eye.x1 * iw,  ey1 = eye.y1 * ih;
+  const ex2 = eye.x2 * iw,  ey2 = eye.y2 * ih;
+  const eH  = ey2 - ey1;    // 눈 세로 크기 (픽셀)
+  const eW  = ex2 - ex1;    // 눈 가로 크기
 
-  // 눈썹 중심: 눈 중심보다 1.1배 눈높이 위
-  const browCY = eCY - eH * 1.15;
-  const browH  = eH * 0.42;        // 눈썹 두께 ≈ 눈높이 42%
+  // 눈썹 아랫선 = 눈 윗선에서 위로 (눈 높이의 0.6배)
+  const browBottom = ey1 - eH * 0.65;
+  // 눈썹 두께 = 눈 높이의 0.50배
+  const browH = eH * 0.50;
+  const browTop = browBottom - browH;
 
   return {
-    x1: ex1 - eW * 0.06,            // 눈보다 살짝 안쪽으로 더
-    y1: browCY - browH / 2,
-    x2: ex2 + eW * 0.10,            // 눈보다 살짝 바깥으로 더
-    y2: browCY + browH / 2,
+    x1: ex1 - eW * 0.08,   // 눈보다 안쪽으로 살짝 더
+    y1: browTop,
+    x2: ex2 + eW * 0.14,   // 눈보다 바깥으로 살짝 더
+    y2: browBottom,
   };
 }
 
-// ── 헤어스트록 그리기 ────────────────────────────────────────
+// ── 헤어스트록 눈썹 그리기 ───────────────────────────────
+// 레퍼런스 기반:
+//   앞머리(inner) → 55° 위쪽   (세움)
+//   중간(body)    → 25° 비스듬
+//   꼬리(tail)    →  5° 거의 수평 (눕힘)
 function drawHairStroke(ctx, bx1, by1, bx2, by2, style, thick, hex, alpha) {
   const cfg = ARCH[style] || ARCH["소프트 세미아치"];
   const W   = bx2 - bx1;
-  const BH  = by2 - by1;
+  const BH  = by2 - by1;   // 눈썹 영역 높이
 
-  // 이미지 기준 방향 판단
+  // ── 방향 판별 ────────────────────────────────────────────
   const isLeft  = (bx1 + bx2) / 2 < ctx.canvas.width / 2;
-  const innerX  = isLeft ? bx2 : bx1;   // 코쪽
-  const outerX  = isLeft ? bx1 : bx2;   // 귀쪽
-  const outSign = outerX > innerX ? 1 : -1;
+  // leftBrow: 안쪽(코)=bx2(오른쪽), 바깥쪽(귀)=bx1(왼쪽)
+  // rightBrow: 안쪽(코)=bx1(왼쪽),  바깥쪽(귀)=bx2(오른쪽)
+  const innerX  = isLeft ? bx2 : bx1;
+  const outerX  = isLeft ? bx1 : bx2;
+  const outDir  = outerX > innerX ? 1 : -1;   // +1=오른쪽, -1=왼쪽
 
-  // 눈썹 아치 베지어 (inner→outer)
-  const ctrlX = innerX + (outerX - innerX) * cfg.peak;
-  const ctrlY = by1 + BH * (1 - cfg.arch);
-  const sY    = by2;
-  const eY    = by2 - BH * 0.08;
+  // ── 눈썹 아치 베지어 제어점 ──────────────────────────────
+  // 안쪽에서 peakAt(65%) 지점에 산
+  const ctrlX = innerX + (outerX - innerX) * cfg.peakAt;
+  const ctrlY = by1 + BH * (1 - cfg.archH);   // 산 높이
+  const sY    = by2 - BH * 0.05;              // 시작 y (안쪽, 아래쪽)
+  const eY    = by2 - BH * 0.20;              // 끝 y (꼬리, 살짝 위)
 
   ctx.save();
   ctx.lineCap = "round";
 
-  const N = 95;
+  const N = 110;
+
   for (let i = 0; i < N; i++) {
-    const t  = i / (N - 1);  // 0=inner(코), 1=outer(꼬리)
+    const t  = i / (N - 1);   // 0 = 안쪽(inner), 1 = 꼬리(outer)
     const b  = 1 - t;
 
-    // 아치 위 위치
+    // 아치 위 위치 (베지어)
     const ax = b*b*innerX + 2*b*t*ctrlX + t*t*outerX;
     const ay = b*b*sY     + 2*b*t*ctrlY + t*t*eY;
 
-    // ── 헤어스트록 핵심: 꼬리로 갈수록 눕힘 ──────────────
-    // inner(t=0): 48°  →  middle(t=0.5): 22°  →  tail(t=1): 4°
-    const deg = 48 - t * 44;
+    // ── 핵심: 헤어스트록 각도 ─────────────────────────────
+    // inner(t=0): 55° → middle(t=0.5): 28° → tail(t=1): 4°
+    const deg = 55 - t * 51;
     const rad = deg * Math.PI / 180;
 
-    // 털 길이 (가운데 가장 길게)
+    // 털 길이: 가운데 가장 길고 양끝 짧게
     const taper   = Math.sin(Math.PI * t);
-    const hairLen = BH * (1.1 + 2.4 * taper) * thick;
+    const hairLen = BH * (1.3 + 2.6 * taper) * thick;
 
-    // 수직(위) · 수평(바깥) 성분
-    const vLen = Math.sin(rad) * hairLen;   // 위로 올라가는 양
-    const hLen = Math.cos(rad) * hairLen;   // 바깥으로 뻗는 양
+    // ── 수직(위) · 수평(바깥) 성분 — 감쇠 없이 풀로 ──────
+    const hComp = Math.cos(rad) * hairLen;   // 바깥쪽으로 뻗음
+    const vComp = Math.sin(rad) * hairLen;   // 위로 올라감
 
-    // 뿌리 위치 (약간 랜덤, 아치 아래쪽에서)
-    const jx   = (Math.random() - 0.5) * W * 0.022;
-    const rootX = ax + jx;
-    const rootY = ay + Math.random() * BH * 0.42;
+    // 뿌리 위치 (아치 위 + 약간 랜덤)
+    const jitter = (Math.random() - 0.5) * W * 0.022;
+    const rootX  = ax + jitter;
+    const rootY  = ay + Math.random() * BH * 0.40;
 
-    // 끝 (위로 + 바깥으로)
-    const tipX = rootX + outSign * hLen;
-    const tipY = rootY - vLen;
+    // 끝 위치 (수평으로 outDir * hComp, 수직으로 위 vComp)
+    const tipX = rootX + outDir * hComp;
+    const tipY = rootY - vComp;
 
-    // 자연스러운 구부러짐
-    const bend = (Math.random() - 0.5) * 1.6;
-    const cpX  = rootX + outSign * hLen * 0.38 + bend;
-    const cpY  = rootY - vLen * 0.52;
+    // 자연스러운 구부러짐 (약하게)
+    const bend = (Math.random() - 0.5) * 1.4;
+    const cpX  = rootX + outDir * hComp * 0.42 + bend;
+    const cpY  = rootY - vComp * 0.54;
 
-    // 투명도
-    const op = (0.58 + 0.42 * taper) * (0.70 + Math.random() * 0.30);
+    // 투명도 (가운데 진하게)
+    const op = (0.58 + 0.42 * taper) * (0.68 + Math.random() * 0.32);
 
     ctx.beginPath();
     ctx.moveTo(rootX, rootY);
     ctx.quadraticCurveTo(cpX, cpY, tipX, tipY);
     ctx.strokeStyle = "#" + hex;
-    ctx.lineWidth   = 0.50 + Math.random() * 1.05;
+    ctx.lineWidth   = 0.48 + Math.random() * 0.98;
     ctx.globalAlpha = alpha * op;
     ctx.stroke();
   }
@@ -133,18 +137,13 @@ export default function App() {
   const render = useCallback(() => {
     const cv  = canvasRef.current, img = imgRef.current;
     if (!cv || !img || !result?.eyeCoords) return;
-
     const ctx = cv.getContext("2d");
     ctx.clearRect(0, 0, cv.width, cv.height);
-
     const st  = result.recommendedStyles?.[selSt]?.name || "소프트 세미아치";
     const iw  = img.naturalWidth, ih = img.naturalHeight;
-
-    // 눈 좌표 → 눈썹 좌표 자동 계산
     const lb  = eyeToBrow(result.eyeCoords.leftEye,  iw, ih);
     const rb  = eyeToBrow(result.eyeCoords.rightEye, iw, ih);
     const col = color.replace("#", "");
-
     drawHairStroke(ctx, lb.x1, lb.y1, lb.x2, lb.y2, st, thick, col, alpha);
     drawHairStroke(ctx, rb.x1, rb.y1, rb.x2, rb.y2, st, thick, col, alpha);
   }, [result, selSt, alpha, color, thick]);
@@ -183,14 +182,14 @@ export default function App() {
             { type: "image", source: { type: "base64", media_type: imgFile.type || "image/jpeg", data: b64 } },
             { type: "text", text: `반영구 시술 전문가로서 정면 사진을 분석하세요. JSON만 출력, 마크다운 없음.
 
-eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
-- 이미지 전체 크기 대비 0~1 정규화 비율
-- leftEye = 이미지 왼쪽 눈 (사람 오른쪽 눈)
-- rightEye = 이미지 오른쪽 눈 (사람 왼쪽 눈)
-- x1=눈 시작X, y1=눈꺼풀 위Y, x2=눈 끝X, y2=눈 아래Y
-- ★ 반드시 눈 자체의 위치 (눈썹 아님, 이마 아님)
-- ★ 눈은 보통 얼굴 전체 높이의 40~55% 위치
-- ★ y2-y1은 보통 0.04~0.08 (눈 세로 크기)
+eyeCoords 측정 (★ 눈 자체 위치 — 눈썹 아님):
+- 이미지 전체 크기 대비 0~1 정규화
+- leftEye = 이미지 왼쪽 눈, rightEye = 이미지 오른쪽 눈
+- y1 = 윗 눈꺼풀 라인 (눈이 뜬 상태 기준)
+- y2 = 아랫 속눈썹 라인
+- ★ y2 - y1 반드시 0.04~0.09 범위 (눈 높이)
+- ★ 눈은 이미지 전체의 40~58% 위치에 있음
+- x1 = 눈 안쪽 끝, x2 = 눈 바깥쪽 끝
 
 {
   "faceShape": "둥근형",
@@ -202,12 +201,12 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
   "skinTone": "웜톤/어두움",
   "skinToneDisplay": "웜 미디엄 톤",
   "eyeCoords": {
-    "leftEye":  { "x1":0.27,"y1":0.43,"x2":0.46,"y2":0.51 },
-    "rightEye": { "x1":0.54,"y1":0.43,"x2":0.73,"y2":0.51 }
+    "leftEye":  { "x1":0.27,"y1":0.44,"x2":0.46,"y2":0.52 },
+    "rightEye": { "x1":0.54,"y1":0.44,"x2":0.73,"y2":0.52 }
   },
   "recommendedStyles": [
-    { "rank":1,"tag":"베스트",   "name":"각진 아치형",   "length":4,"angle":4,"thickness":3,"color":4,"archPosition":4,"roundness":2,"hashtag":"#갸름한효과" },
-    { "rank":2,"tag":"추천",     "name":"소프트 세미아치","length":3,"angle":3,"thickness":3,"color":3,"archPosition":3,"roundness":3,"hashtag":"#자연스러운입체감" },
+    { "rank":1,"tag":"베스트",    "name":"각진 아치형",   "length":4,"angle":4,"thickness":3,"color":4,"archPosition":4,"roundness":2,"hashtag":"#갸름한효과" },
+    { "rank":2,"tag":"추천",      "name":"소프트 세미아치","length":3,"angle":3,"thickness":3,"color":3,"archPosition":3,"roundness":3,"hashtag":"#자연스러운입체감" },
     { "rank":3,"tag":"자연스러움","name":"내추럴 아치형", "length":3,"angle":3,"thickness":2,"color":3,"archPosition":3,"roundness":4,"hashtag":"#부드러운인상" }
   ],
   "notRecommended": [
@@ -217,9 +216,7 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
   "recommendedColors": ["다크 브라운","초코 브라운","내추럴 브라운"],
   "supplementPoints": ["보완포인트1","보완포인트2","보완포인트3"],
   "browTips": { "start":"콧볼의 수직선","arch":"검은 동자 바깥쪽","end":"눈꼬리보다 살짝 길게" }
-}
-
-실제 사진에서 눈(eye)의 정확한 위치를 측정해주세요.` }
+}` }
           ]}]
         })
       });
@@ -286,7 +283,8 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </button>
         </div>
         <div style={{textAlign:"center",fontSize:11,color:"#b0968a",lineHeight:1.8}}>
-          · 분석 결과는 참고용이며 전문가 상담을 병행하세요<br/>· 사진은 분석 후 저장되지 않습니다
+          · 분석 결과는 참고용이며 전문가 상담을 병행하세요<br/>
+          · 사진은 분석 후 저장되지 않습니다
         </div>
       </div>
     </div>
@@ -296,7 +294,9 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
     <div style={{...s.app,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}>
       <div style={{fontSize:52,marginBottom:20}}>✨</div>
       <div style={{fontSize:16,fontWeight:700,color:"#3d2b1f",marginBottom:8}}>분석 중입니다...</div>
-      <div style={{fontSize:13,color:"#9e8a7e",textAlign:"center",lineHeight:1.9}}>눈 위치 기반으로<br/>맞춤 눈썹 라인을 계산하고 있어요</div>
+      <div style={{fontSize:13,color:"#9e8a7e",textAlign:"center",lineHeight:1.9}}>
+        눈 위치 기반으로<br/>맞춤 눈썹 라인을 계산하고 있어요
+      </div>
     </div>
   );
 
@@ -312,7 +312,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
       </div>
       <div style={{padding:"16px 14px"}}>
 
-        {/* 시뮬레이션 */}
         <div style={s.card}>
           <div style={s.sec}>👁 헤어스트록 눈썹 시뮬레이션</div>
           <div style={{position:"relative",width:"100%",borderRadius:10,overflow:"hidden",background:"#f0e8e0",lineHeight:0}}>
@@ -325,7 +324,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
             </div>
           </div>
 
-          {/* 스타일 탭 */}
           <div style={{display:"flex",gap:6,marginTop:12,marginBottom:10}}>
             {r.recommendedStyles?.map((st,idx) => (
               <button key={idx} onClick={()=>setSelSt(idx)} style={{
@@ -339,11 +337,10 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
             ))}
           </div>
 
-          {/* 슬라이더 */}
           <div style={{background:"#faf8f5",borderRadius:10,padding:"12px 14px"}}>
             {[
-              {label:"투명도",min:0.3,max:1,  step:0.05,val:alpha,set:setAlpha,fmt:v=>Math.round(v*100)+"%"},
-              {label:"두 께", min:0.5,max:2.0,step:0.1, val:thick,set:setThick,fmt:v=>v.toFixed(1)+"x"},
+              {label:"투명도",min:0.3,max:1,step:0.05,val:alpha,set:setAlpha,fmt:v=>Math.round(v*100)+"%"},
+              {label:"두 께", min:0.5,max:2.0,step:0.1,val:thick,set:setThick,fmt:v=>v.toFixed(1)+"x"},
             ].map(({label,min,max,step,val,set,fmt}) => (
               <div key={label} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                 <span style={{fontSize:10,color:"#9e8a7e",width:38,flexShrink:0}}>{label}</span>
@@ -368,7 +365,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 얼굴형 */}
         <div style={s.card}>
           <div style={s.sec}>얼굴형 분석</div>
           <div style={{display:"flex",gap:12}}>
@@ -381,7 +377,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 골격 */}
         <div style={s.card}>
           <div style={s.sec}>골격 & 얼굴선</div>
           <div style={{display:"flex"}}>
@@ -407,7 +402,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 현재 눈썹 + 피부톤 */}
         <div style={{display:"flex",gap:10,marginBottom:12}}>
           <div style={{...s.card,flex:1.5,marginBottom:0}}>
             <div style={s.sec}>현재 눈썹 특징</div>
@@ -428,7 +422,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 추천 스타일 */}
         <div style={s.card}>
           <div style={{...s.sec,display:"flex",alignItems:"center",gap:7}}>
             <span style={{background:"#c4956a",color:"#fff",fontSize:9,padding:"2px 8px",borderRadius:99,fontWeight:700}}>BEST</span>
@@ -453,7 +446,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 비추천 */}
         <div style={s.card}>
           <div style={{...s.sec,display:"flex",alignItems:"center",gap:7}}>
             <span style={{background:"#e07070",color:"#fff",fontSize:9,padding:"2px 8px",borderRadius:99,fontWeight:700}}>비추천</span>
@@ -470,7 +462,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 추천 컬러 */}
         <div style={s.card}>
           <div style={s.sec}>추천 눈썹 컬러</div>
           <div style={{display:"flex",gap:12,marginBottom:10}}>
@@ -492,7 +483,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           </div>
         </div>
 
-        {/* 보완 포인트 */}
         <div style={s.card}>
           <div style={s.sec}>보완 포인트</div>
           {r.supplementPoints?.map((p,i)=>(
@@ -503,7 +493,6 @@ eyeCoords 측정 규칙 (★ 눈 위치를 정확하게):
           ))}
         </div>
 
-        {/* 시술 팁 */}
         <div style={s.card}>
           <div style={s.sec}>눈썹 3포인트 시술 팁</div>
           {[["① 앞머리",r.browTips?.start],["② 눈썹 산",r.browTips?.arch],["③ 꼬리",r.browTips?.end]].map(([lb,vl])=>(
