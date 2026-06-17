@@ -1,78 +1,99 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-// ─── 눈썹 스타일 정의 ────────────────────────────────────────
+// ── 눈썹 스타일 ────────────────────────────────────────────
 const STYLES = {
-  "자연스러운 아치형": { archH:0.38, peakAt:0.63, tailDrop:0.15 },
-  "각진 아치형":       { archH:0.58, peakAt:0.66, tailDrop:0.20 },
-  "소프트 세미아치":   { archH:0.44, peakAt:0.63, tailDrop:0.16 },
-  "평평한 일자형":     { archH:0.10, peakAt:0.55, tailDrop:0.05 },
-  "부드러운 아치형":   { archH:0.30, peakAt:0.60, tailDrop:0.12 },
+  "자연스러운 아치형": { arch:0.38, peakAt:0.63 },
+  "각진 아치형":       { arch:0.58, peakAt:0.66 },
+  "소프트 세미아치":   { arch:0.44, peakAt:0.63 },
+  "평평한 일자형":     { arch:0.08, peakAt:0.55 },
+  "부드러운 아치형":   { arch:0.28, peakAt:0.60 },
 };
 
-// ─── 눈썹 채움 그리기 ────────────────────────────────────────
+// ── 눈썹 그리기 (아치 위로, 베지어 샘플링) ─────────────────
 function drawBrow(ctx, x1, y1, x2, y2, styleName, hexColor, alpha) {
   const cfg = STYLES[styleName] || STYLES["자연스러운 아치형"];
   const W = x2 - x1, H = y2 - y1;
   const isLeft = (x1 + x2) / 2 < ctx.canvas.width / 2;
 
-  // 안쪽(코)↔바깥쪽(귀) 방향
-  const inX = isLeft ? x2 : x1;
+  // 코쪽(inner) / 귀쪽(outer)
+  const inX  = isLeft ? x2 : x1;
   const outX = isLeft ? x1 : x2;
+  const pkX  = inX + (outX - inX) * cfg.peakAt;
 
-  // 산 위치
-  const pkX = inX + (outX - inX) * cfg.peakAt;
-  const pkY = y1 + H * (1 - cfg.archH);
+  // ★ 핵심: 아치가 위로 향하도록
+  // inCY / outCY = 눈썹 아랫부분(y2에 가깝게)
+  // pkCY = 눈썹 윗부분(y1에 가깝게, 즉 작은 y값)
+  const inCY  = y2 - H * 0.25;
+  const outCY = y2 - H * 0.30;
+  const pkCY  = y2 - H * (0.25 + cfg.arch * 0.90); // 위로 올라감 (y 작아짐)
 
-  // 눈썹 윗선 포인트
-  const inTopY  = y1 + H * 0.30;
-  const outTopY = y1 + H * (0.30 + cfg.tailDrop);
+  const N = 60;
+  const topPts = [], botPts = [];
 
-  // 눈썹 아랫선 포인트 (더 두껍게)
-  const inBotY  = y1 + H * 0.72;
-  const outBotY = y1 + H * (0.68 - cfg.tailDrop * 0.3);
-  const pkBotY  = pkY + H * 0.55;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N, b = 1 - t;
+    // 2차 베지어: inner → peak → outer
+    const cx = b*b*inX  + 2*b*t*pkX  + t*t*outX;
+    const cy = b*b*inCY + 2*b*t*pkCY + t*t*outCY;
+    // 두께: 양끝 가늘고 가운데 두껍게
+    const taper = Math.sin(Math.PI * t);
+    const hH = H * (0.20 + 0.28 * taper);
+    topPts.push([cx, cy - hH]);
+    botPts.push([cx, cy + hH]);
+  }
 
   const path = new Path2D();
-  // 윗선 (앞머리 → 산 → 꼬리)
-  path.moveTo(inX, inTopY);
-  path.quadraticCurveTo(pkX, pkY, outX, outTopY);
-  // 꼬리 끝 곡선
-  path.quadraticCurveTo(outX + (isLeft?-W*0.04:W*0.04), outTopY + H*0.20, outX + (isLeft?-W*0.02:W*0.02), outBotY);
-  // 아랫선 (꼬리 → 산 → 앞머리)
-  path.quadraticCurveTo(pkX, pkBotY, inX, inBotY);
-  // 앞머리 끝 부드럽게
-  path.quadraticCurveTo(inX + (isLeft?W*0.03:-W*0.03), (inTopY+inBotY)/2, inX, inTopY);
+  path.moveTo(...topPts[0]);
+  for (let i = 1; i <= N; i++) path.lineTo(...topPts[i]);
+  for (let i = N; i >= 0; i--) path.lineTo(...botPts[i]);
   path.closePath();
 
-  // 그라데이션 (앞머리·꼬리 옅게, 가운데 진하게)
-  const g0 = isLeft ? x2 : x1;
-  const g1 = isLeft ? x1 : x2;
-  const grad = ctx.createLinearGradient(g0, 0, g1, 0);
-  grad.addColorStop(0.00, "#"+hexColor+"00");
-  grad.addColorStop(0.12, "#"+hexColor+"cc");
-  grad.addColorStop(0.45, "#"+hexColor+"ff");
-  grad.addColorStop(0.80, "#"+hexColor+"bb");
-  grad.addColorStop(1.00, "#"+hexColor+"00");
+  // 그라데이션 (안쪽·꼬리 옅게, 가운데 진하게)
+  const g0 = isLeft ? inX : outX;
+  const g1 = isLeft ? outX : inX;
+  const gr = ctx.createLinearGradient(g0, 0, g1, 0);
+  gr.addColorStop(0.00, "#"+hexColor+"00");
+  gr.addColorStop(0.10, "#"+hexColor+"cc");
+  gr.addColorStop(0.45, "#"+hexColor+"ff");
+  gr.addColorStop(0.85, "#"+hexColor+"bb");
+  gr.addColorStop(1.00, "#"+hexColor+"00");
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  ctx.fillStyle   = grad;
-  ctx.filter      = "blur(2.5px)";
+  ctx.fillStyle = gr;
+  ctx.filter = "blur(2.2px)";
   ctx.fill(path);
-  ctx.filter      = "none";
+  ctx.filter = "none";
   ctx.restore();
 }
 
-// ─── 눈 → 눈썹 위치 변환 ─────────────────────────────────────
-function calcBrow(eye, iw, ih, yOffset) {
-  const ey1 = eye.y1*ih, ey2 = eye.y2*ih;
-  const ex1 = eye.x1*iw, ex2 = eye.x2*iw;
-  const eH  = ey2 - ey1, eW = ex2 - ex1;
-  // 눈 윗선 기준 위로 (yOffset으로 미세 조정 가능)
-  const gap    = eH * (1.0 + yOffset * 0.15);
+// ── 눈 → 눈썹 좌표 변환 ────────────────────────────────────
+function calcBrow(eye, iw, ih, yOff) {
+  const ey1=eye.y1*ih, ey2=eye.y2*ih, ex1=eye.x1*iw, ex2=eye.x2*iw;
+  const eH=ey2-ey1, eW=ex2-ex1;
+  const gap    = eH * (1.05 + yOff * 0.15);
   const browH  = eH * 0.55;
   const browBot = ey1 - gap;
-  return { x1: ex1-eW*0.10, y1: browBot-browH, x2: ex2+eW*0.18, y2: browBot };
+  return { x1:ex1-eW*0.12, y1:browBot-browH, x2:ex2+eW*0.20, y2:browBot };
+}
+
+// ── 미간 기준 좌우 대칭 보정 ────────────────────────────────
+function centerBrows(lb, rb, eyes, iw) {
+  // 미간 중심 = 두 눈의 안쪽 코너 중간
+  const leftInner  = eyes.leftEye.x2  * iw;
+  const rightInner = eyes.rightEye.x1 * iw;
+  const faceCenter = (leftInner + rightInner) / 2;
+
+  // 현재 두 눈썹 안쪽 끝
+  // leftBrow inner = lb.x2 (isLeft이면 x2가 코쪽)
+  // rightBrow inner = rb.x1
+  const curCenter = (lb.x2 + rb.x1) / 2;
+  const shift = faceCenter - curCenter;
+
+  return {
+    lb: { ...lb, x1: lb.x1 + shift, x2: lb.x2 + shift },
+    rb: { ...rb, x1: rb.x1 + shift, x2: rb.x2 + shift },
+  };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -85,7 +106,7 @@ export default function App() {
   const [alpha,   setAlpha]   = useState(0.85);
   const [color,   setColor]   = useState("#4a2c18");
   const [thick,   setThick]   = useState(1.0);
-  const [yOff,    setYOff]    = useState(0);   // 위치 조정
+  const [yOff,    setYOff]    = useState(0);
   const [error,   setError]   = useState(null);
 
   const fileRef   = useRef();
@@ -105,14 +126,26 @@ export default function App() {
     const ctx=cv.getContext("2d");
     ctx.clearRect(0,0,cv.width,cv.height);
     const iw=img.naturalWidth, ih=img.naturalHeight;
-    const { leftEye, rightEye } = result.eyeCoords;
+    const {leftEye, rightEye} = result.eyeCoords;
     const col = color.replace("#","");
-    // 두께 반영: y1을 thick으로 조정
-    const applyThick = (b) => ({ ...b, y1: b.y1-(b.y2-b.y1)*(thick-1)*0.5, y2: b.y2+(b.y2-b.y1)*(thick-1)*0.5 });
-    const lb = applyThick(calcBrow(leftEye,  iw, ih, yOff));
-    const rb = applyThick(calcBrow(rightEye, iw, ih, yOff));
-    drawBrow(ctx, lb.x1,lb.y1,lb.x2,lb.y2, style, col, alpha);
-    drawBrow(ctx, rb.x1,rb.y1,rb.x2,rb.y2, style, col, alpha);
+
+    // 눈썹 좌표 계산
+    let lb = calcBrow(leftEye,  iw, ih, yOff);
+    let rb = calcBrow(rightEye, iw, ih, yOff);
+
+    // ★ 미간 기준 좌우 정렬
+    const centered = centerBrows(lb, rb, result.eyeCoords, iw);
+    lb = centered.lb; rb = centered.rb;
+
+    // 두께 보정
+    const applyThick = b => ({
+      ...b,
+      y1: b.y1 - (b.y2-b.y1)*(thick-1)*0.5,
+      y2: b.y2 + (b.y2-b.y1)*(thick-1)*0.5,
+    });
+
+    drawBrow(ctx, ...Object.values(applyThick(lb)), style, col, alpha);
+    drawBrow(ctx, ...Object.values(applyThick(rb)), style, col, alpha);
   },[result, style, alpha, color, thick, yOff]);
 
   useEffect(()=>{ render(); },[render]);
@@ -133,20 +166,19 @@ export default function App() {
       });
       const resp = await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
-        headers:{ "Content-Type":"application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
+        headers:{"Content-Type":"application/json",
+          "x-api-key":import.meta.env.VITE_ANTHROPIC_API_KEY,
           "anthropic-version":"2023-06-01",
-          "anthropic-dangerous-direct-browser-access":"true" },
-        body: JSON.stringify({ model:"claude-sonnet-4-5", max_tokens:1500,
-          messages:[{ role:"user", content:[
-            { type:"image", source:{ type:"base64", media_type:imgFile.type||"image/jpeg", data:b64 }},
-            { type:"text", text:`정면 사진에서 얼굴 분석 후 JSON만 출력 (마크다운 없음).
+          "anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-5",max_tokens:1500,
+          messages:[{role:"user",content:[
+            {type:"image",source:{type:"base64",media_type:imgFile.type||"image/jpeg",data:b64}},
+            {type:"text",text:`정면 사진 분석 후 JSON만 출력 (마크다운 없음).
 
-eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
-• y1 = 위 눈꺼풀 라인, y2 = 아래 속눈썹 라인
-• y2-y1 = 0.04~0.09 (눈 높이), 이미지 전체의 40~58% 위치
-• x1 = 눈 안쪽, x2 = 눈 바깥쪽
-• leftEye = 이미지 왼쪽 눈, rightEye = 이미지 오른쪽 눈
+eyeCoords — 반드시 눈(eye) 자체 위치:
+- y1=위 눈꺼풀, y2=아래 눈꺼풀, y2-y1=0.04~0.09
+- 이미지 전체 40~58% 위치
+- x1=눈 안쪽, x2=눈 바깥쪽
 
 {
  "faceShape":"둥근형",
@@ -155,8 +187,7 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
  "skeleton":{"forehead":"중간","cheekbone":"넓음","jaw":"부드러움"},
  "faceContour":{"jawLine":"둥글고 부드러움","ratio":"비슷함"},
  "currentBrow":{"shape":"일자형","archAngle":"낮음","color":"자연스러움","thickness":"두꺼움","length":"표준"},
- "skinTone":"웜톤/어두움",
- "skinToneDisplay":"웜 미디엄 톤",
+ "skinTone":"웜톤/어두움","skinToneDisplay":"웜 미디엄 톤",
  "eyeCoords":{
    "leftEye": {"x1":0.27,"y1":0.44,"x2":0.46,"y2":0.52},
    "rightEye":{"x1":0.54,"y1":0.44,"x2":0.73,"y2":0.52}
@@ -165,39 +196,37 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
  "recommendedColors":["다크 브라운","초코 브라운","내추럴 브라운"],
  "supplementPoints":["눈썹 산을 살짝 올려 갸름한 효과","꼬리를 길게 빼서 세로 비율 보완","앞머리 그라데이션으로 자연스럽게"],
  "notRecommended":["평평한 일자형","과한 각진형"]
-}` }
+}`}
           ]}]})
       });
       const data=await resp.json();
       const txt=data.content?.find(b=>b.type==="text")?.text||"";
       const parsed=JSON.parse(txt.replace(/```json|```/g,"").trim());
-      // 추천 스타일 자동 적용
-      if(parsed.recommendedStyle && STYLES[parsed.recommendedStyle]) setStyle(parsed.recommendedStyle);
+      if(parsed.recommendedStyle&&STYLES[parsed.recommendedStyle]) setStyle(parsed.recommendedStyle);
       setResult(parsed); setPhase("result");
-    } catch(e) {
+    } catch(e){
       setError("분석 오류. 다시 시도해주세요."); setPhase("upload");
     }
   };
 
   const reset=()=>{ setPhase("upload");setImgSrc(null);setImgFile(null);setResult(null);setYOff(0); };
 
-  const colorMap = {
+  const colorMap={
     "다크 브라운":"#3d2010","초코 브라운":"#5a2e18","내추럴 브라운":"#7a4a30",
     "애쉬 브라운":"#6b5848","그레이 브라운":"#5a5048","라이트 브라운":"#9a7860",
   };
 
-  const sc = { // style constants
-    app:  {fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif",background:"#faf8f5",minHeight:"100vh"},
-    hdr:  {background:"linear-gradient(135deg,#6b4f3e,#c4956a)",padding:"16px 20px",color:"#fff",textAlign:"center"},
-    card: {background:"#fff",borderRadius:14,padding:16,marginBottom:12,border:"1px solid #ede4dc",boxShadow:"0 1px 8px rgba(139,111,94,0.07)"},
-    sec:  {fontSize:11,fontWeight:700,color:"#8b6f5e",marginBottom:10,borderBottom:"1px solid #f0e6de",paddingBottom:6},
-    pill: {display:"inline-block",padding:"3px 10px",borderRadius:99,background:"#f5ede6",color:"#8b6f5e",fontSize:11,marginRight:5,marginBottom:5},
-    row:  {display:"flex",alignItems:"center",gap:10,marginBottom:8},
-    lbl:  {fontSize:10,color:"#9e8a7e",width:44,flexShrink:0},
-    val:  {fontSize:10,color:"#c4956a",width:36,textAlign:"right",fontWeight:700},
+  const sc={
+    app:{fontFamily:"'Noto Sans KR','Apple SD Gothic Neo',sans-serif",background:"#faf8f5",minHeight:"100vh"},
+    hdr:{background:"linear-gradient(135deg,#6b4f3e,#c4956a)",padding:"16px 20px",color:"#fff",textAlign:"center"},
+    card:{background:"#fff",borderRadius:14,padding:16,marginBottom:12,border:"1px solid #ede4dc",boxShadow:"0 1px 8px rgba(139,111,94,0.07)"},
+    sec:{fontSize:11,fontWeight:700,color:"#8b6f5e",marginBottom:10,borderBottom:"1px solid #f0e6de",paddingBottom:6},
+    pill:{display:"inline-block",padding:"3px 10px",borderRadius:99,background:"#f5ede6",color:"#8b6f5e",fontSize:11,marginRight:5,marginBottom:5},
+    row:{display:"flex",alignItems:"center",gap:10,marginBottom:8},
+    lbl:{fontSize:10,color:"#9e8a7e",width:48,flexShrink:0},
+    val:{fontSize:10,color:"#c4956a",width:36,textAlign:"right",fontWeight:700},
   };
 
-  // ── 업로드 ────────────────────────────────────────────────
   if(phase==="upload") return (
     <div style={sc.app}>
       <div style={sc.hdr}>
@@ -212,10 +241,10 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
               padding:imgSrc?10:"40px 20px",cursor:"pointer",background:"#faf8f5",
               textAlign:"center",transition:"all .2s",marginBottom:14}}>
             {imgSrc
-              ? <img src={imgSrc} style={{maxHeight:280,borderRadius:8,maxWidth:"100%",display:"block",margin:"0 auto"}}/>
-              : <><div style={{fontSize:48,marginBottom:10}}>📸</div>
-                  <div style={{fontSize:14,fontWeight:600,color:"#5a4a42",marginBottom:4}}>고객 정면 사진 업로드</div>
-                  <div style={{fontSize:12,color:"#b0968a"}}>클릭하여 사진 선택</div></>}
+              ?<img src={imgSrc} style={{maxHeight:280,borderRadius:8,maxWidth:"100%",display:"block",margin:"0 auto"}}/>
+              :<><div style={{fontSize:48,marginBottom:10}}>📸</div>
+                 <div style={{fontSize:14,fontWeight:600,color:"#5a4a42",marginBottom:4}}>고객 정면 사진 업로드</div>
+                 <div style={{fontSize:12,color:"#b0968a"}}>클릭하여 사진 선택</div></>}
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files[0])}/>
           {error&&<div style={{color:"#e07070",fontSize:12,textAlign:"center",marginBottom:10}}>{error}</div>}
@@ -231,19 +260,17 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
     </div>
   );
 
-  // ── 로딩 ─────────────────────────────────────────────────
   if(phase==="loading") return (
     <div style={{...sc.app,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}>
       <div style={{fontSize:56,marginBottom:20}}>✨</div>
       <div style={{fontSize:16,fontWeight:700,color:"#3d2b1f",marginBottom:8}}>분석 중...</div>
-      <div style={{fontSize:13,color:"#9e8a7e",textAlign:"center",lineHeight:2}}>얼굴형과 눈 위치를 분석하고<br/>맞춤 눈썹 디자인을 추천드려요</div>
+      <div style={{fontSize:13,color:"#9e8a7e",textAlign:"center",lineHeight:2}}>얼굴형과 눈 위치를 분석하고<br/>맞춤 눈썹을 추천드려요</div>
     </div>
   );
 
   if(!result) return null;
   const r=result;
 
-  // ── 결과 ─────────────────────────────────────────────────
   return (
     <div style={sc.app}>
       <div style={sc.hdr}>
@@ -253,23 +280,19 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
       </div>
       <div style={{padding:"16px 14px"}}>
 
-        {/* 시뮬레이션 */}
         <div style={sc.card}>
           <div style={sc.sec}>👁 눈썹 시뮬레이션</div>
-
-          {/* 사진 + 캔버스 */}
           <div style={{position:"relative",width:"100%",borderRadius:10,overflow:"hidden",lineHeight:0,background:"#eee"}}>
             <img ref={imgRef} src={imgSrc} alt="고객"
               onLoad={()=>{initCanvas();setTimeout(render,60);}}
               style={{width:"100%",display:"block",borderRadius:10}}/>
-            <canvas ref={canvasRef}
-              style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",borderRadius:10,pointerEvents:"none"}}/>
+            <canvas ref={canvasRef} style={{position:"absolute",top:0,left:0,width:"100%",height:"100%",borderRadius:10,pointerEvents:"none"}}/>
             <div style={{position:"absolute",top:8,left:8,background:"rgba(196,149,106,.92)",color:"#fff",fontSize:11,fontWeight:700,padding:"3px 10px",borderRadius:99}}>
               ✨ {style}
             </div>
           </div>
 
-          {/* 눈썹 스타일 선택 */}
+          {/* 스타일 선택 */}
           <div style={{marginTop:12,marginBottom:10}}>
             <div style={{fontSize:11,fontWeight:700,color:"#8b6f5e",marginBottom:6}}>눈썹 스타일</div>
             <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
@@ -287,20 +310,19 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
 
           {/* 조절 슬라이더 */}
           <div style={{background:"#faf8f5",borderRadius:10,padding:"12px 14px"}}>
-            {/* ★ 위치 조정 — 가장 중요 */}
             <div style={sc.row}>
               <span style={sc.lbl}>눈썹위치</span>
-              <input type="range" min={-5} max={5} step={0.5} value={yOff}
+              <input type="range" min={-6} max={6} step={0.5} value={yOff}
                 onChange={e=>setYOff(parseFloat(e.target.value))}
                 style={{flex:1,accentColor:"#c4956a"}}/>
               <span style={sc.val}>{yOff>0?"+":""}{yOff}</span>
             </div>
-            <div style={{fontSize:10,color:"#b09688",marginBottom:8,marginTop:-4}}>
-              ↑ 위로 올리려면 마이너스(-), 내리려면 플러스(+)
+            <div style={{fontSize:10,color:"#b09688",marginBottom:10,marginTop:-4}}>
+              ↑ 눈썹이 낮으면 마이너스(-), 높으면 플러스(+)
             </div>
             {[
               {label:"투명도",min:.2,max:1,step:.05,val:alpha,set:setAlpha,fmt:v=>Math.round(v*100)+"%"},
-              {label:"두 께", min:.4,max:2,step:.1, val:thick,set:setThick,fmt:v=>v.toFixed(1)+"x"},
+              {label:"두 께", min:.4,max:2, step:.1, val:thick,set:setThick,fmt:v=>v.toFixed(1)+"x"},
             ].map(({label,min,max,step,val,set,fmt})=>(
               <div key={label} style={sc.row}>
                 <span style={sc.lbl}>{label}</span>
@@ -310,7 +332,6 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
                 <span style={sc.val}>{fmt(val)}</span>
               </div>
             ))}
-            {/* 컬러 */}
             <div style={sc.row}>
               <span style={sc.lbl}>컬 러</span>
               <div style={{display:"flex",gap:7,flex:1,flexWrap:"wrap"}}>
@@ -364,7 +385,7 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
           </div>
         </div>
 
-        {/* 현재눈썹+피부 */}
+        {/* 현재눈썹 + 피부 */}
         <div style={{display:"flex",gap:10,marginBottom:12}}>
           <div style={{...sc.card,flex:1.5,marginBottom:0}}>
             <div style={sc.sec}>현재 눈썹</div>
@@ -385,7 +406,7 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
           </div>
         </div>
 
-        {/* 추천컬러 */}
+        {/* 추천 컬러 */}
         <div style={sc.card}>
           <div style={sc.sec}>추천 눈썹 컬러</div>
           <div style={{display:"flex",gap:14}}>
@@ -403,7 +424,7 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
           </div>
         </div>
 
-        {/* 보완포인트 */}
+        {/* 보완 포인트 */}
         <div style={sc.card}>
           <div style={sc.sec}>보완 포인트</div>
           {r.supplementPoints?.map((p,i)=>(
@@ -423,7 +444,7 @@ eyeCoords — 눈(eye) 위치만 (눈썹·이마 절대 아님):
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {r.notRecommended?.map((nr,i)=>(
               <div key={i} style={{background:"#fff8f8",border:"1px solid #f5d0d0",borderRadius:10,padding:"8px 12px",fontSize:11}}>
-                ❌ {typeof nr==="string"?nr:nr.name}
+                ❌ {typeof nr==="string"?nr:nr.name||nr}
               </div>
             ))}
           </div>
