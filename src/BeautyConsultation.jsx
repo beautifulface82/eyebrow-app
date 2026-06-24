@@ -1,5 +1,34 @@
 import { useState, useRef, useEffect } from "react";
 
+// ── 고급 폰트 & 디자인 토큰 ──
+const FONT_LINK = `
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Noto+Sans+KR:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0f0d0b; }
+  @keyframes bcP { 0%,100%{opacity:.15;transform:translateY(3px)} 50%{opacity:1;transform:translateY(0)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+  @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+  @keyframes gp { 0%,100%{opacity:.2;transform:scale(.7)} 50%{opacity:1;transform:scale(1.2)} }
+`;
+
+// 디자인 토큰
+const T = {
+  bg:       "#0f0d0b",
+  bg2:      "#181410",
+  card:     "#1a1612",
+  cardBdr:  "rgba(180,148,90,.18)",
+  gold:     "#C9A96E",
+  goldLt:   "#E8D5A8",
+  goldDim:  "rgba(201,169,110,.35)",
+  cream:    "#F5F0E8",
+  mink:     "#8B7355",
+  minkLt:   "#B5A080",
+  ivory:    "#FAF7F0",
+  err:      "#D4806A",
+  fontDisp: "'Cormorant Garamond', 'Noto Serif KR', serif",
+  fontBody: "'Noto Sans KR', 'DM Sans', sans-serif",
+};
+
 // ─── 눈썹 실사 이미지 ───
 const BROW_IMAGES = {
   "soft_arch": "data:image/jpeg;base64,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",
@@ -272,51 +301,50 @@ function useGeneratedImage(trigger, promptFn, refImg, apiKey) {
 function GeneratedImageCard({ title, imgSrc, loading, error, fallback, height = 200 }) {
   return (
     <div style={{
-      borderRadius: 14, overflow: "hidden",
-      border: "1.5px solid rgba(196,149,106,.3)",
-      background: "#fff8f2",
-      boxShadow: "0 4px 20px rgba(196,149,106,.15)",
+      borderRadius:14, overflow:"hidden",
+      border:`1px solid ${T.cardBdr}`,
+      background:T.card,
+      boxShadow:"0 8px 32px rgba(0,0,0,.5)",
     }}>
-      {/* 헤더 */}
       <div style={{
-        padding: "10px 14px",
-        background: "linear-gradient(135deg,rgba(196,149,106,.15),rgba(232,196,184,.1))",
-        borderBottom: "1px solid rgba(196,149,106,.2)",
-        display: "flex", alignItems: "center", gap: 8,
+        padding:"10px 14px",
+        background:"linear-gradient(135deg,rgba(201,169,110,.1),rgba(0,0,0,.2))",
+        borderBottom:`1px solid ${T.cardBdr}`,
+        display:"flex", alignItems:"center", gap:8,
       }}>
-        <span style={{ fontSize: 14 }}>✨</span>
-        <span style={{ fontSize: 11, fontWeight: 700, color: "#8b6f5e", letterSpacing: 0.5 }}>{title}</span>
+        <span style={{ fontSize:10, color:T.gold }}>✦</span>
+        <span style={{ fontFamily:T.fontDisp, fontSize:12, color:T.goldLt, letterSpacing:.8 }}>{title}</span>
         {loading && (
-          <span style={{ marginLeft: "auto", fontSize: 9, color: "#c4956a", display: "flex", gap: 3 }}>
+          <span style={{ marginLeft:"auto", display:"flex", alignItems:"center", gap:4,
+            fontSize:9, color:T.minkLt }}>
             생성 중
-            {[0,1,2].map(i => (
+            {[0,1,2].map(i=>(
               <span key={i} style={{
-                display: "inline-block", width: 4, height: 4, borderRadius: "50%",
-                background: "#c4956a", animation: `gp 1s ease ${i*0.2}s infinite`
+                display:"inline-block", width:3, height:3, borderRadius:"50%",
+                background:T.gold, animation:`gp 1s ease ${i*0.2}s infinite`
               }}/>
             ))}
           </span>
         )}
       </div>
-
-      {/* 이미지 영역 */}
-      <div style={{ height, position: "relative", background: "#faf5f0",
-        display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ height, background:T.bg2,
+        display:"flex", alignItems:"center", justifyContent:"center" }}>
         {loading ? (
-          <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>🎨</div>
-            <div style={{ fontSize: 11, color: "#c4956a" }}>AI 이미지 생성 중...</div>
-            <style>{`@keyframes gp{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+          <div style={{ textAlign:"center" }}>
+            <div style={{ fontSize:28, marginBottom:10, opacity:.6 }}>✦</div>
+            <div style={{ fontSize:10, color:T.gold, letterSpacing:2, textTransform:"uppercase" }}>
+              AI Generating...
+            </div>
           </div>
         ) : imgSrc ? (
           <img src={imgSrc} alt={title}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}/>
+            style={{ width:"100%", height:"100%", objectFit:"cover" }}/>
         ) : fallback ? (
           <img src={fallback} alt={title}
-            style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.9 }}/>
+            style={{ width:"100%", height:"100%", objectFit:"cover", opacity:.75 }}/>
         ) : (
-          <div style={{ textAlign: "center", color: "#c4956a", fontSize: 12 }}>
-            {error ? `⚠️ ${error}` : "이미지 준비 중"}
+          <div style={{ textAlign:"center", color:T.mink, fontSize:11 }}>
+            {error ? `⚠ ${error}` : "—"}
           </div>
         )}
       </div>
@@ -327,13 +355,15 @@ function GeneratedImageCard({ title, imgSrc, loading, error, fallback, height = 
 // ─── 공통 UI ───
 function Card({ title, icon, accent, children }) {
   return (
-    <div style={{ background:"#fff", borderRadius:14, padding:16, marginBottom:12,
-      border:"1px solid #ede4dc", boxShadow:"0 1px 8px rgba(139,111,94,.07)" }}>
-      <div style={{ fontSize:11, fontWeight:700, color:"#8b6f5e", marginBottom:12,
-        borderBottom:"1px solid #f0e6de", paddingBottom:8,
-        display:"flex", alignItems:"center", gap:6 }}>
-        <span>{icon}</span>{title}
-        {accent && <span style={{ marginLeft:"auto", fontSize:10, color:"#c4956a" }}>{accent}</span>}
+    <div style={{ background:T.card, borderRadius:16, padding:"18px 16px", marginBottom:12,
+      border:`1px solid ${T.cardBdr}`, boxShadow:"0 2px 24px rgba(0,0,0,.35)" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:14,
+        paddingBottom:10, borderBottom:`1px solid ${T.cardBdr}` }}>
+        <span style={{ fontSize:13, opacity:.8 }}>{icon}</span>
+        <span style={{ fontFamily:T.fontDisp, fontSize:14, fontWeight:400,
+          color:T.goldLt, letterSpacing:.8 }}>{title}</span>
+        {accent && <span style={{ marginLeft:"auto", fontSize:9, color:T.gold,
+          letterSpacing:2, textTransform:"uppercase" }}>{accent}</span>}
       </div>
       {children}
     </div>
@@ -343,24 +373,30 @@ function Card({ title, icon, accent, children }) {
 function ScoreBar({ score, label }) {
   const pct = Math.min(100, Math.max(0, parseInt(score)||0));
   return (
-    <div style={{ marginBottom:6 }}>
-      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-        <span style={{ fontSize:10, color:"#9e8a7e" }}>{label}</span>
-        <span style={{ fontSize:10, color:"#c4956a", fontWeight:700 }}>{pct}%</span>
+    <div style={{ marginBottom:8 }}>
+      <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+        <span style={{ fontSize:10, color:T.minkLt, fontFamily:T.fontBody }}>{label}</span>
+        <span style={{ fontSize:10, color:T.gold, fontWeight:500 }}>{pct}%</span>
       </div>
-      <div style={{ height:5, background:"#f0e6de", borderRadius:3, overflow:"hidden" }}>
+      <div style={{ height:3, background:"rgba(180,148,90,.15)", borderRadius:2, overflow:"hidden" }}>
         <div style={{ height:"100%", width:`${pct}%`,
-          background:"linear-gradient(to right,#c4956a,#e8b48a)", borderRadius:3 }}/>
+          background:`linear-gradient(to right,${T.gold},${T.goldLt})`, borderRadius:2 }}/>
       </div>
     </div>
   );
 }
 
 function Tag({ children, type="normal" }) {
-  const s={normal:{bg:"#f5ede6",c:"#8b6f5e",b:"#e8ddd5"},best:{bg:"#fff3e8",c:"#c4956a",b:"#c4956a"},avoid:{bg:"#fff0f0",c:"#c07070",b:"#f0c8c8"}}[type];
-  return <span style={{ fontSize:10, padding:"3px 10px", borderRadius:99, background:s.bg,
-    color:s.c, border:`1px solid ${s.b}`, display:"inline-block", marginRight:5, marginBottom:5,
-    fontWeight:type==="best"?700:400 }}>{children}</span>;
+  const s = {
+    normal:{ bg:"rgba(180,148,90,.08)", c:T.minkLt,  b:"rgba(180,148,90,.22)" },
+    best:  { bg:"rgba(201,169,110,.14)",c:T.gold,     b:T.goldDim },
+    avoid: { bg:"rgba(180,80,60,.08)",  c:"#C07060",  b:"rgba(180,80,60,.22)" },
+  }[type];
+  return <span style={{ fontSize:9, padding:"3px 12px", borderRadius:99,
+    background:s.bg, color:s.c, border:`1px solid ${s.b}`,
+    display:"inline-block", marginRight:5, marginBottom:5,
+    fontFamily:T.fontBody, letterSpacing:.5,
+    fontWeight:type==="best"?600:400 }}>{children}</span>;
 }
 
 function BrowCard({ styleKey, selected, dim }) {
@@ -368,25 +404,27 @@ function BrowCard({ styleKey, selected, dim }) {
   const src  = BROW_IMAGES[styleKey];
   if (!src) return null;
   return (
-    <div style={{ opacity:dim?0.35:1, filter:dim?"grayscale(60%)":"none" }}>
+    <div style={{ opacity:dim?0.28:1, filter:dim?"grayscale(70%)":"none", transition:"opacity .2s" }}>
       <div style={{
-        border:`2px solid ${selected?"#c4956a":dim?"#f0c8c8":"#ede4dc"}`,
+        border:`1.5px solid ${selected?T.gold:dim?"rgba(180,80,60,.3)":T.cardBdr}`,
         borderRadius:12, overflow:"hidden",
-        boxShadow:selected?"0 4px 16px rgba(196,149,106,.3)":"none",
-        background:selected?"#fff8f2":"#faf8f5"
+        boxShadow:selected?`0 0 0 1px ${T.goldDim}, 0 6px 24px rgba(0,0,0,.5)`:"none",
+        background: selected?"rgba(201,169,110,.07)":T.bg2,
       }}>
-        <div style={{ background:"#faf5f0", display:"flex", alignItems:"center",
+        <div style={{ background:"rgba(0,0,0,.25)", display:"flex", alignItems:"center",
           justifyContent:"center", height:82, overflow:"hidden" }}>
           <img src={src} alt={meta.label}
             style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}/>
         </div>
-        <div style={{ padding:"6px 10px 8px", textAlign:"center",
-          background:selected?"#fff8f2":"#faf8f5" }}>
-          <div style={{ fontSize:10, fontWeight:700,
-            color:dim?"#c07070":selected?"#c4956a":"#6b5a52" }}>
-            {dim?"❌ ":selected?"✓ ":""}{meta.label}
+        <div style={{ padding:"7px 10px 9px", textAlign:"center",
+          background:selected?"rgba(201,169,110,.06)":"transparent" }}>
+          <div style={{ fontSize:9, letterSpacing:.8,
+            color:dim?"#8B5040":selected?T.gold:T.minkLt,
+            fontFamily:T.fontBody }}>
+            {dim?"✕ ":selected?"✦ ":""}{meta.label}
           </div>
-          {selected && <div style={{ fontSize:9, color:"#9e8a7e", marginTop:2 }}>{meta.desc}</div>}
+          {selected && <div style={{ fontSize:8, color:T.mink, marginTop:3,
+            fontStyle:"italic", fontFamily:T.fontDisp }}>{meta.desc}</div>}
         </div>
       </div>
     </div>
@@ -397,28 +435,28 @@ function LipCard({ colorKey, rank, selected, dim, small }) {
   const meta = LIP_META[colorKey]||{};
   const src  = LIP_IMAGES[colorKey];
   if (!src) return null;
-  const H = small ? 52 : 70;
+  const H = small ? 50 : 70;
   return (
-    <div style={{ opacity:dim?0.42:1, filter:dim?"grayscale(35%)":"none" }}>
+    <div style={{ opacity:dim?0.35:1, filter:dim?"grayscale(50%) brightness(.8)":"none", transition:"opacity .2s" }}>
       <div style={{
-        border:`2px solid ${selected?"#c4956a":dim?"#f0c8c8":"#ede4dc"}`,
+        border:`1.5px solid ${selected?T.gold:dim?"rgba(180,80,60,.3)":T.cardBdr}`,
         borderRadius:10, overflow:"hidden",
-        boxShadow:selected?"0 3px 12px rgba(196,149,106,.28)":"none",
+        boxShadow:selected?`0 0 0 1px ${T.goldDim}, 0 4px 20px rgba(0,0,0,.4)`:"none",
+        background:T.bg2,
       }}>
-        <div style={{ background:dim?"#fff4f4":"#faf5f0",
-          display:"flex", alignItems:"center", justifyContent:"center",
-          height:H, overflow:"hidden" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
+          height:H, overflow:"hidden", background:"rgba(0,0,0,.2)" }}>
           <img src={src} alt={meta.label}
             style={{ width:"100%", height:"100%", objectFit:"contain", display:"block" }}/>
         </div>
-        <div style={{ padding:"4px 6px 6px", textAlign:"center",
-          background:dim?"#fff8f8":selected?"#fff8f2":"#faf8f5" }}>
-          <div style={{ fontSize:small?8:9, fontWeight:700,
-            color:dim?"#c07070":selected?"#c4956a":"#6b5a52",
+        <div style={{ padding:"4px 5px 6px", textAlign:"center" }}>
+          <div style={{ fontSize:small?7.5:8.5, letterSpacing:.3,
+            color:dim?"#8B5040":selected?T.gold:T.minkLt,
+            fontFamily:T.fontBody,
             whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-            {dim?"❌ ":selected?"✓ ":""}{meta.label}
+            {dim?"✕ ":selected?"✦ ":""}{meta.label}
           </div>
-          {rank && <div style={{ fontSize:8, color:dim?"#c07070":"#c4956a", fontWeight:700 }}>{rank}</div>}
+          {rank && <div style={{ fontSize:7.5, color:dim?"#8B5040":T.gold, marginTop:1, opacity:dim?1:.7 }}>{rank}</div>}
         </div>
       </div>
     </div>
@@ -492,17 +530,29 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
   );
 
   return (
-    <div style={{ fontFamily:"'Noto Sans KR',sans-serif", background:"#faf8f5", minHeight:"100vh" }}>
-      {/* 헤더 */}
-      <div style={{ background:"linear-gradient(135deg,#6b4f3e,#c4956a)",
-        padding:"16px 20px", color:"#fff", textAlign:"center" }}>
-        <div style={{ fontSize:9, letterSpacing:4, opacity:.7, marginBottom:2 }}>SEMI-PERMANENT MAKEUP</div>
-        <div style={{ fontSize:18, fontWeight:700 }}>종합 뷰티 AI 리포트</div>
-        <div style={{ fontSize:10, opacity:.65, marginTop:2, display:"flex",
-          alignItems:"center", justifyContent:"center", gap:8 }}>
-          <span>{isMale?"👨 남성":"👩 여성"}</span>
-          <span>·</span>
-          <span>{new Date().toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric"})}</span>
+    <div style={{ fontFamily:T.fontBody, background:T.bg, minHeight:"100vh" }}>
+      <style>{FONT_LINK}</style>
+      {/* 결과 헤더 */}
+      <div style={{ padding:"22px 20px 18px", textAlign:"center",
+        background:T.bg, borderBottom:`1px solid ${T.cardBdr}` }}>
+        <div style={{ fontSize:8, letterSpacing:5, color:T.gold, marginBottom:10,
+          textTransform:"uppercase", opacity:.75 }}>
+          AI BEAUTY ANALYSIS REPORT
+        </div>
+        <div style={{ fontFamily:T.fontDisp, fontSize:22, color:T.ivory,
+          fontWeight:300, marginBottom:6, lineHeight:1.3 }}>
+          <em style={{ color:T.gold }}>Premium</em> Design Report
+        </div>
+        <div style={{ display:"inline-flex", alignItems:"center", gap:10,
+          padding:"5px 16px", borderRadius:50,
+          border:`1px solid ${T.cardBdr}`, background:"rgba(201,169,110,.07)" }}>
+          <span style={{ fontSize:10, color:T.minkLt }}>
+            {isMale?"♂ 남성":"♀ 여성"}
+          </span>
+          <span style={{ width:1, height:10, background:T.cardBdr }}/>
+          <span style={{ fontSize:9, color:T.mink, letterSpacing:1 }}>
+            {new Date().toLocaleDateString("ko-KR",{year:"numeric",month:"long",day:"numeric"})}
+          </span>
         </div>
       </div>
 
@@ -510,30 +560,36 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
 
         {/* ── AI 시술 결과 이미지 생성 버튼 ── */}
         <div style={{
-          background:"linear-gradient(135deg,rgba(196,149,106,.12),rgba(232,196,184,.08))",
-          border:"1.5px solid rgba(196,149,106,.3)", borderRadius:14,
-          padding:"16px", marginBottom:14, textAlign:"center"
+          background:T.card, border:`1px solid ${T.cardBdr}`,
+          borderRadius:16, padding:"18px 16px", marginBottom:14, textAlign:"center",
+          boxShadow:"0 4px 24px rgba(0,0,0,.35)"
         }}>
-          <div style={{ fontSize:12, fontWeight:700, color:"#8b6f5e", marginBottom:6 }}>
-            ✨ AI 시술 결과 이미지 생성
+          <div style={{ fontSize:8, letterSpacing:4, color:T.gold, marginBottom:10,
+            textTransform:"uppercase" }}>AI Image Generation</div>
+          <div style={{ fontFamily:T.fontDisp, fontSize:17, color:T.ivory,
+            fontWeight:300, marginBottom:6 }}>
+            시술 결과 이미지
           </div>
-          <div style={{ fontSize:11, color:"#9e8a7e", marginBottom:12, lineHeight:1.6 }}>
-            분석 결과를 바탕으로 눈썹·립·SMP<br/>시술 결과 이미지를 AI로 생성합니다
+          <div style={{ fontSize:10, color:T.mink, marginBottom:16, lineHeight:1.8 }}>
+            분석된 눈썹·립·SMP 결과를<br/>AI가 실제 시술 결과처럼 생성합니다
           </div>
           <button
             onClick={() => setGenerateAll(true)}
             disabled={generateAll}
             style={{
-              padding:"11px 28px", borderRadius:50, border:"none",
+              padding:"12px 32px", borderRadius:50,
+              border: generateAll ? `1px solid ${T.cardBdr}` : "none",
               background: generateAll
-                ? "#e8ddd5"
-                : "linear-gradient(135deg,#8b6f5e,#c4956a)",
-              color: generateAll ? "#9e8a7e" : "#fff",
-              fontSize:13, fontWeight:700, cursor: generateAll ? "not-allowed" : "pointer",
-              boxShadow: generateAll ? "none" : "0 4px 16px rgba(196,149,106,.4)",
+                ? "transparent"
+                : `linear-gradient(135deg,${T.gold},#A8824A)`,
+              color: generateAll ? T.mink : T.bg,
+              fontFamily:T.fontBody, fontSize:12, fontWeight:500,
+              letterSpacing:2, textTransform:"uppercase",
+              cursor:generateAll?"not-allowed":"pointer",
+              boxShadow:generateAll?"none":`0 6px 24px rgba(201,169,110,.35)`,
             }}
           >
-            {generateAll ? "✦ 생성 중..." : "🎨 이미지 생성하기"}
+            {generateAll ? "✦  생성 중..." : "이미지 생성하기"}
           </button>
         </div>
 
@@ -571,27 +627,27 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
         {/* 얼굴형 */}
         <Card title="얼굴형 분석" icon="🔍" accent={face?.imageType?.join(" · ")}>
           <div style={{ display:"flex", gap:12 }}>
-            <img src={imgSrc} style={{ width:90, height:112, objectFit:"cover",
-              borderRadius:10, border:"2px solid #e8ddd5", flexShrink:0 }}/>
+            <img src={imgSrc} style={{ width:88, height:110, objectFit:"cover", borderRadius:10,
+              border:`1px solid ${T.cardBdr}`, flexShrink:0 }}/>
             <div style={{ flex:1 }}>
               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
-                <div style={{ fontSize:20, fontWeight:800, color:"#8b6f5e" }}>{face?.shape}</div>
+                <div style={{ fontFamily:T.fontDisp, fontSize:22, fontWeight:300, color:T.ivory, letterSpacing:.5 }}>{face?.shape}</div>
                 <div style={{ fontSize:11,
-                  background:isMale?"#e8f0ff":"#ffe8f0",
-                  color:isMale?"#4060a0":"#a04060",
+                  background:"rgba(201,169,110,.1)",
+                  color:T.gold,
                   padding:"2px 10px", borderRadius:99, fontWeight:700 }}>
                   {isMale?"남성":"여성"}
                 </div>
               </div>
-              <div style={{ fontSize:11, color:"#9e8a7e", marginBottom:8, lineHeight:1.6 }}>
+              <div style={{ fontSize:11, color:T.mink, marginBottom:8, lineHeight:1.6 }}>
                 {face?.summary}
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
                 {[["눈 간격",face?.eyeSpacing],["눈 모양",face?.eyeShape],
                   ["턱선",face?.jawline],["밸런스",face?.balance]].map(([k,v])=>(
                   <div key={k}>
-                    <div style={{ fontSize:9, color:"#b09688" }}>{k}</div>
-                    <div style={{ fontSize:11, fontWeight:600, color:"#3d2b1f" }}>{v}</div>
+                    <div style={{ fontSize:8, color:T.mink, letterSpacing:1, textTransform:"uppercase" }}>{k}</div>
+                    <div style={{ fontSize:11, color:T.goldLt, fontFamily:T.fontDisp, fontWeight:300 }}>{v}</div>
                   </div>
                 ))}
               </div>
@@ -615,30 +671,30 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
               {palette.emoji}
             </div>
             <div>
-              <div style={{ fontSize:17, fontWeight:800, color:"#3d2b1f" }}>{color?.seasonDetail}</div>
-              <div style={{ fontSize:11, color:"#9e8a7e" }}>
-                언더톤: <strong style={{color:"#c4956a"}}>{color?.undertone}</strong>
+              <div style={{ fontFamily:T.fontDisp, fontSize:18, fontWeight:300, color:T.ivory }}>{color?.seasonDetail}</div>
+              <div style={{ fontSize:11, color:T.mink }}>
+                언더톤: <strong style={{color:T.gold}}>{color?.undertone}</strong>
               </div>
             </div>
           </div>
-          <div style={{ display:"flex", gap:4, marginBottom:12, height:30, borderRadius:10, overflow:"hidden" }}>
+          <div style={{ display:"flex", gap:3, marginBottom:14, height:28, borderRadius:8, overflow:"hidden" }}>
             {palette.colors.map((c,i)=><div key={i} style={{ flex:1, background:c }}/>)}
           </div>
-          <div style={{ fontSize:9, color:"#b09688", marginBottom:6 }}>추천 의류 컬러</div>
+          <div style={{ fontSize:9, color:T.mink, marginBottom:6 }}>추천 의류 컬러</div>
           <div style={{ marginBottom:8 }}>
             {color?.bestClothingColors?.map(c=><Tag key={c} type="best">{c}</Tag>)}
           </div>
-          <div style={{ fontSize:9, color:"#b09688", marginBottom:6 }}>피해야 할 컬러</div>
+          <div style={{ fontSize:9, color:T.mink, marginBottom:6 }}>피해야 할 컬러</div>
           <div>{color?.avoidColors?.map(c=><Tag key={c} type="avoid">✕ {c}</Tag>)}</div>
         </Card>
 
         {/* 눈썹 */}
         <Card title="눈썹 디자인" icon="✦">
-          <div style={{ fontSize:9, color:"#b09688", letterSpacing:1.5, marginBottom:8 }}>✦ 추천 눈썹 스타일</div>
+          <div style={{ fontSize:9, color:T.mink, letterSpacing:1.5, marginBottom:8 }}>✦ 추천 눈썹 스타일</div>
           <div style={{ marginBottom:14 }}>
             <BrowCard styleKey={eyebrow?.recommendedStyle||"soft_arch"} selected/>
           </div>
-          <div style={{ fontSize:9, color:"#b09688", letterSpacing:1.5, marginBottom:8 }}>추천 피그먼트 컬러</div>
+          <div style={{ fontSize:9, color:T.mink, letterSpacing:1.5, marginBottom:8 }}>추천 피그먼트 컬러</div>
           <div style={{ display:"flex", gap:12, marginBottom:14, alignItems:"center" }}>
             {[eyebrow?.primaryPigment, eyebrow?.secondaryPigment].filter(Boolean).map((key,i)=>{
               const p=BROW_PIGMENTS[key]; if(!p)return null;
@@ -648,17 +704,17 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
                     background:p.hex, margin:"0 auto 4px",
                     border:i===0?"2.5px solid #c4956a":"2px solid #e8ddd5",
                     boxShadow:i===0?"0 3px 12px rgba(196,149,106,.4)":"none" }}/>
-                  <div style={{ fontSize:9, color:"#6b5a52" }}>{p.label}</div>
-                  {i===0&&<div style={{ fontSize:9, color:"#c4956a", fontWeight:700 }}>1순위</div>}
+                  <div style={{ fontSize:9, color:T.minkLt }}>{p.label}</div>
+                  {i===0&&<div style={{ fontSize:9, color:T.gold, fontWeight:700 }}>1순위</div>}
                 </div>
               );
             })}
-            <div style={{ flex:1, fontSize:11, color:"#6b5a52", lineHeight:1.7,
+            <div style={{ flex:1, fontSize:11, color:T.minkLt, lineHeight:1.7,
               paddingLeft:10, borderLeft:"1px solid #f0e6de" }}>
               {eyebrow?.pigmentReason}
             </div>
           </div>
-          <div style={{ fontSize:9, color:"#b09688", letterSpacing:1.5, marginBottom:8 }}>눈썹 스타일 비교</div>
+          <div style={{ fontSize:9, color:T.mink, letterSpacing:1.5, marginBottom:8 }}>눈썹 스타일 비교</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:12 }}>
             {ALL_BROW.map(key=>(
               <BrowCard key={key} styleKey={key}
@@ -666,11 +722,11 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
                 dim={eyebrow?.notRecommended?.includes(key)}/>
             ))}
           </div>
-          <div style={{ background:"#faf8f5", borderRadius:10, padding:"10px 12px" }}>
-            <div style={{ fontSize:9, color:"#b09688", marginBottom:6 }}>시술 포인트</div>
+          <div style={{ background:T.bg2, borderRadius:10, padding:"10px 12px", border:`1px solid ${T.cardBdr}` }}>
+            <div style={{ fontSize:9, color:T.mink, marginBottom:6 }}>시술 포인트</div>
             {eyebrow?.tips?.map((t,i)=>(
-              <div key={i} style={{ fontSize:11, color:"#3d2b1f", marginBottom:4, display:"flex", gap:6 }}>
-                <span style={{color:"#c4956a"}}>✦</span>{t}
+              <div key={i} style={{ fontSize:11, color:T.ivory, marginBottom:4, display:"flex", gap:6 }}>
+                <span style={{color:T.gold}}>✦</span>{t}
               </div>
             ))}
           </div>
@@ -678,33 +734,35 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
 
         {/* 립 */}
         <Card title="립 블러쉬 분석" icon="💋">
-          <div style={{ fontSize:9, color:"#b09688", letterSpacing:1.5, marginBottom:8 }}>✦ 추천 립 컬러</div>
+          <div style={{ fontSize:9, color:T.mink, letterSpacing:1.5, marginBottom:8 }}>✦ 추천 립 컬러</div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:12 }}>
             <LipCard colorKey={lip?.primaryColor}   rank="1순위 ✓" selected/>
             <LipCard colorKey={lip?.secondaryColor} rank="2순위"/>
             <LipCard colorKey={lip?.avoidColor}     rank="피해야 함" dim/>
           </div>
-          <div style={{ fontSize:11, color:"#6b5a52", lineHeight:1.7,
-            background:"#faf8f5", borderRadius:10, padding:"10px 12px", marginBottom:8 }}>
-            <span style={{color:"#c4956a"}}>✦ </span>{lip?.colorReason}
+          <div style={{ fontSize:10, color:T.minkLt, lineHeight:1.8,
+            background:T.bg2, borderRadius:10, padding:"10px 12px", marginBottom:8,
+            border:`1px solid ${T.cardBdr}` }}>
+            <span style={{color:T.gold}}>✦ </span>{lip?.colorReason}
           </div>
           {lip?.avoidReason && (
-            <div style={{ fontSize:10, color:"#c07070", background:"#fff8f8",
-              padding:"7px 12px", borderRadius:8, marginBottom:12 }}>
+            <div style={{ fontSize:10, color:"#D4806A", background:"rgba(180,80,60,.07)",
+              padding:"7px 12px", borderRadius:8, marginBottom:12,
+              border:"1px solid rgba(180,80,60,.18)" }}>
               ✕ {lip?.avoidReason}
             </div>
           )}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:10 }}>
             {[["볼륨",lip?.volume],["큐피드보우",lip?.cupidBow],
               ["입꼬리",lip?.corners],["시술방향","Natural Enhancement"]].map(([k,v])=>(
-              <div key={k} style={{ background:"#faf8f5", borderRadius:10, padding:"10px 12px" }}>
-                <div style={{ fontSize:9, color:"#b09688" }}>{k}</div>
-                <div style={{ fontSize:11, fontWeight:600, color:"#3d2b1f", marginTop:2 }}>{v}</div>
+              <div key={k} style={{ background:T.bg2, borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ fontSize:9, color:T.mink }}>{k}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:T.ivory, marginTop:2 }}>{v}</div>
               </div>
             ))}
           </div>
           <ScoreBar score={lip?.symmetry} label="입술 대칭도"/>
-          <div style={{ fontSize:9, color:"#b09688", letterSpacing:1.5, margin:"12px 0 8px" }}>
+          <div style={{ fontSize:9, color:T.mink, letterSpacing:1.5, margin:"12px 0 8px" }}>
             퍼스널컬러 맞춤 립 컬러
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:5 }}>
@@ -716,11 +774,11 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
                 <LipCard key={key} colorKey={key} small selected={key===lip?.primaryColor}/>
               ))}
           </div>
-          <div style={{ background:"#faf8f5", borderRadius:10, padding:"10px 12px", marginTop:12 }}>
-            <div style={{ fontSize:9, color:"#b09688", marginBottom:6 }}>시술 포인트</div>
+          <div style={{ background:T.bg2, borderRadius:10, padding:"10px 12px", marginTop:12 }}>
+            <div style={{ fontSize:9, color:T.mink, marginBottom:6 }}>시술 포인트</div>
             {lip?.tips?.map((t,i)=>(
-              <div key={i} style={{ fontSize:11, color:"#3d2b1f", marginBottom:4, display:"flex", gap:6 }}>
-                <span style={{color:"#c4956a"}}>✦</span>{t}
+              <div key={i} style={{ fontSize:11, color:T.ivory, marginBottom:4, display:"flex", gap:6 }}>
+                <span style={{color:T.gold}}>✦</span>{t}
               </div>
             ))}
           </div>
@@ -741,10 +799,10 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
               <div style={{ fontSize:8 }}>/ 5점</div>
             </div>
             <div>
-              <div style={{ fontSize:12, fontWeight:700, color:"#3d2b1f", marginBottom:4 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:T.ivory, marginBottom:4 }}>
                 {smp?.needed?"⚠️ SMP 권장":"✅ 현재 양호"}
               </div>
-              <div style={{ fontSize:11, color:"#6b5a52", lineHeight:1.6 }}>
+              <div style={{ fontSize:11, color:T.minkLt, lineHeight:1.6 }}>
                 {smp?.recommendation}
               </div>
             </div>
@@ -753,17 +811,17 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
             {[["헤어라인",smp?.hairlineShape],["모발 밀도",smp?.density],
               ["추천 스타일",isMale?smp?.maleStyle:smp?.femaleStyle],
               ["대상",isMale?"남성":"여성"]].map(([k,v])=>(
-              <div key={k} style={{ background:"#faf8f5", borderRadius:10, padding:"10px 12px" }}>
-                <div style={{ fontSize:9, color:"#b09688" }}>{k}</div>
-                <div style={{ fontSize:11, fontWeight:600, color:"#3d2b1f", marginTop:2 }}>{v}</div>
+              <div key={k} style={{ background:T.bg2, borderRadius:10, padding:"10px 12px" }}>
+                <div style={{ fontSize:9, color:T.mink }}>{k}</div>
+                <div style={{ fontSize:11, fontWeight:600, color:T.ivory, marginTop:2 }}>{v}</div>
               </div>
             ))}
           </div>
           {!smp?.needed && (
-            <div style={{ marginTop:12, background:"#f0f8e8", borderRadius:10,
-              padding:"12px 14px", border:"1px solid #c8e0b0", textAlign:"center" }}>
-              <div style={{ fontSize:13, color:"#5a8040" }}>✅ 현재 헤어라인 상태 양호</div>
-              <div style={{ fontSize:11, color:"#7a9060", marginTop:4 }}>
+            <div style={{ marginTop:12, background:"rgba(100,160,80,.07)", borderRadius:10,
+              padding:"12px 14px", border:"1px solid rgba(100,160,80,.2)", textAlign:"center" }}>
+              <div style={{ fontSize:12, color:"#88C070", fontFamily:T.fontDisp, fontWeight:300 }}>✦ 현재 헤어라인 상태 양호</div>
+              <div style={{ fontSize:9, color:"rgba(136,192,112,.7)", marginTop:6, letterSpacing:.5 }}>
                 SMP 없이도 자연스러운 헤어라인입니다
               </div>
             </div>
@@ -772,7 +830,7 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
 
         {/* 헤어 */}
         <Card title="헤어 컬러 & 스타일" icon="✂️">
-          <div style={{ fontSize:9, color:"#b09688", marginBottom:8 }}>추천 헤어 컬러</div>
+          <div style={{ fontSize:9, color:T.mink, marginBottom:8 }}>추천 헤어 컬러</div>
           <div style={{ display:"flex", gap:14, marginBottom:12 }}>
             {[
               {name:hair?.primaryColor,   hex:hair?.primaryHex||"#5A2E18",   rank:"1순위"},
@@ -785,20 +843,21 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
                   border:rank==="1순위"?"2.5px solid #c4956a":avoid?"2px solid #f0c8c8":"2px solid #e8ddd5",
                   boxShadow:rank==="1순위"?"0 2px 10px rgba(196,149,106,.4)":"none",
                   filter:avoid?"grayscale(40%)":"none" }}/>
-                <div style={{ fontSize:9, color:avoid?"#c07070":"#6b5a52", maxWidth:55, lineHeight:1.3 }}>{name}</div>
-                <div style={{ fontSize:9, color:avoid?"#c07070":"#c4956a", fontWeight:700 }}>{rank}</div>
+                <div style={{ fontSize:9, color:avoid?"#D4806A":T.minkLt, maxWidth:55, lineHeight:1.3 }}>{name}</div>
+                <div style={{ fontSize:8, color:avoid?"#D4806A":T.gold, fontWeight:500, letterSpacing:.5 }}>{rank}</div>
               </div>
             ))}
           </div>
           {hair?.avoidReason&&(
-            <div style={{ fontSize:10, color:"#c07070", background:"#fff8f8",
-              padding:"6px 10px", borderRadius:8, marginBottom:10 }}>✕ {hair?.avoidReason}</div>
+            <div style={{ fontSize:9, color:"#D4806A", background:"rgba(180,80,60,.07)",
+              padding:"6px 10px", borderRadius:8, marginBottom:10,
+              border:"1px solid rgba(180,80,60,.18)" }}>✕ {hair?.avoidReason}</div>
           )}
-          <div style={{ background:"#faf8f5", borderRadius:10, padding:"12px 14px" }}>
-            <div style={{ fontSize:9, color:"#b09688", marginBottom:4 }}>
+          <div style={{ background:T.bg2, borderRadius:10, padding:"12px 14px", border:`1px solid ${T.cardBdr}` }}>
+            <div style={{ fontSize:9, color:T.mink, marginBottom:4 }}>
               추천 헤어스타일 ({isMale?"남성":"여성"})
             </div>
-            <div style={{ fontSize:12, fontWeight:600, color:"#3d2b1f" }}>
+            <div style={{ fontFamily:T.fontDisp, fontSize:13, color:T.ivory, fontWeight:300 }}>
               {isMale?hair?.maleStyle:hair?.style}
             </div>
           </div>
@@ -806,40 +865,46 @@ function ResultView({ data, imgSrc, apiKey, onReset }) {
 
         {/* 최종 */}
         <Card title="최종 이미지 리포트" icon="⭐">
-          <div style={{ textAlign:"center", padding:"14px 0", marginBottom:14,
-            background:"linear-gradient(135deg,rgba(196,149,106,.12),rgba(232,196,184,.08))",
-            borderRadius:12, border:"1px solid rgba(196,149,106,.2)" }}>
-            <div style={{ fontSize:9, letterSpacing:3, color:"#c4956a", marginBottom:4 }}>OVERALL IMAGE DIRECTION</div>
-            <div style={{ fontSize:20, fontWeight:800, color:"#3d2b1f" }}>{final?.imageDirection}</div>
+          <div style={{ textAlign:"center", padding:"18px 0", marginBottom:14,
+            background:"rgba(201,169,110,.06)",
+            borderRadius:12, border:`1px solid ${T.cardBdr}` }}>
+            <div style={{ fontSize:8, letterSpacing:4, color:T.gold, marginBottom:8, textTransform:"uppercase", opacity:.8 }}>Overall Image Direction</div>
+            <div style={{ fontFamily:T.fontDisp, fontSize:22, fontWeight:300, color:T.ivory }}>{final?.imageDirection}</div>
           </div>
           <div style={{ display:"flex", gap:8, marginBottom:14 }}>
             {[final?.priority1,final?.priority2,final?.priority3].filter(Boolean).map((p,i)=>(
               <div key={i} style={{ flex:1, textAlign:"center", padding:"10px 6px",
-                background:i===0?"linear-gradient(135deg,#8b6f5e,#c4956a)":"#faf8f5",
-                borderRadius:10, border:i===0?"none":"1px solid #ede4dc",
-                boxShadow:i===0?"0 3px 12px rgba(196,149,106,.3)":"none" }}>
-                <div style={{ fontSize:9, color:i===0?"rgba(255,255,255,.7)":"#b09688", marginBottom:3 }}>{i+1}순위</div>
-                <div style={{ fontSize:11, fontWeight:700, color:i===0?"#fff":"#3d2b1f" }}>{p}</div>
+                background:i===0?`linear-gradient(135deg,${T.gold},#A8824A)`:T.bg2,
+                borderRadius:10, border:i===0?"none":`1px solid ${T.cardBdr}`,
+                boxShadow:i===0?`0 4px 20px rgba(201,169,110,.3)`:"none" }}>
+                <div style={{ fontSize:8, color:i===0?"rgba(15,13,11,.6)":T.mink, marginBottom:3, letterSpacing:1 }}>{i+1}순위</div>
+                <div style={{ fontFamily:T.fontDisp, fontSize:13, fontWeight:300, color:i===0?T.bg:T.ivory }}>{p}</div>
               </div>
             ))}
           </div>
-          <div style={{ background:"linear-gradient(135deg,rgba(196,149,106,.08),rgba(232,196,184,.06))",
-            border:"1px solid rgba(196,149,106,.2)", borderRadius:12, padding:"14px 16px" }}>
-            <div style={{ fontSize:9, letterSpacing:2, color:"#c4956a", marginBottom:6, fontWeight:700 }}>
+          <div style={{ background:"rgba(201,169,110,.05)",
+            border:`1px solid ${T.cardBdr}`, borderRadius:12, padding:"16px" }}>
+            <div style={{ fontSize:8, letterSpacing:3, color:T.gold, marginBottom:10,
+              textTransform:"uppercase", opacity:.8 }}>
               ✦ Stylist's Note
             </div>
-            <div style={{ fontSize:12.5, lineHeight:1.85, color:"#3d2b1f" }}>
+            <div style={{ fontFamily:T.fontDisp, fontSize:14, lineHeight:2,
+              color:T.ivory, fontWeight:300, fontStyle:"italic" }}>
               {final?.stylistComment}
             </div>
           </div>
         </Card>
 
-        <div style={{ textAlign:"center", padding:"8px 0 16px", color:"#b09688", fontSize:11 }}>
-          💡 분석 결과는 참고용이며 실제 시술 결과와 다를 수 있어요
+        <div style={{ textAlign:"center", padding:"8px 0 14px",
+          fontSize:8, color:T.mink, letterSpacing:1.5, textTransform:"uppercase" }}>
+          분석 결과는 참고용이며 실제 시술 결과와 다를 수 있습니다
         </div>
-        <button onClick={onReset} style={{ width:"100%", padding:13, borderRadius:12,
-          border:"1px solid #e8ddd5", background:"#fff", color:"#8b6f5e",
-          fontSize:13, fontWeight:700, cursor:"pointer" }}>
+        <button onClick={onReset} style={{
+          width:"100%", padding:"14px 0", borderRadius:50,
+          border:`1px solid ${T.cardBdr}`, background:"transparent",
+          color:T.minkLt, fontFamily:T.fontBody,
+          fontSize:11, letterSpacing:2, textTransform:"uppercase",
+          cursor:"pointer" }}>
           + 새로운 고객 분석
         </button>
       </div>
@@ -911,59 +976,136 @@ export default function BeautyConsultation() {
     return <ResultView data={result} imgSrc={imgSrc} apiKey={apiKey} onReset={reset}/>;
 
   return(
-    <div style={{fontFamily:"'Noto Sans KR',sans-serif",background:"#faf8f5",minHeight:"100vh"}}>
-      <div style={{background:"linear-gradient(135deg,#6b4f3e,#c4956a)",padding:"16px 20px",color:"#fff",textAlign:"center"}}>
-        <div style={{fontSize:9,letterSpacing:4,opacity:.75,marginBottom:3}}>SEMI-PERMANENT MAKEUP</div>
-        <div style={{fontSize:19,fontWeight:700}}>종합 뷰티 AI 컨설팅</div>
-        <div style={{fontSize:11,opacity:.65,marginTop:3}}>얼굴형 · 눈썹 · 립 · SMP · 퍼스널컬러 · 헤어</div>
-      </div>
-      {phase==="loading"?(
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh"}}>
-          <div style={{fontSize:48,marginBottom:16}}>✨</div>
-          <div style={{fontSize:15,fontWeight:700,color:"#3d2b1f",marginBottom:8}}>AI가 분석하고 있어요</div>
-          <div style={{fontSize:12,color:"#9e8a7e",textAlign:"center",lineHeight:2}}>
-            얼굴형 · 성별 · 퍼스널컬러 · 눈썹 · 립 · SMP · 헤어 분석 중...
-          </div>
-          <div style={{display:"flex",gap:8,marginTop:16}}>
-            {[0,1,2].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:"#c4956a",animation:`bcP 1.2s ease ${i*0.2}s infinite`}}/>)}
-          </div>
-          <style>{`@keyframes bcP{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1.2)}}`}</style>
+    <div style={{fontFamily:T.fontBody, background:T.bg, minHeight:"100vh"}}>
+      <style>{FONT_LINK}</style>
+
+      {/* ── 헤더 ── */}
+      <div style={{ padding:"28px 20px 20px", textAlign:"center",
+        borderBottom:`1px solid ${T.cardBdr}` }}>
+        <div style={{ fontSize:8, letterSpacing:5, color:T.gold, marginBottom:16,
+          textTransform:"uppercase", opacity:.8 }}>
+          AI BEAUTY · PREMIUM ANALYSIS
         </div>
-      ):(
-        <div style={{padding:"20px 16px"}}>
-          <div style={{background:"#fff",borderRadius:14,padding:16,border:"1px solid #ede4dc",boxShadow:"0 1px 8px rgba(139,111,94,.07)"}}>
+        <div style={{ fontFamily:T.fontDisp, fontSize:28, color:T.ivory,
+          fontWeight:300, lineHeight:1.25, marginBottom:8 }}>
+          AI가 분석하고<br/>
+          <em style={{ color:T.gold, fontStyle:"italic" }}>전문가가 디자인합니다</em>
+        </div>
+        <div style={{ fontSize:10, color:T.mink, letterSpacing:1, lineHeight:1.8, marginTop:12 }}>
+          눈썹 반영구 · 립 블러쉬 · SMP · 퍼스널컬러<br/>
+          사진 한 장으로 시작하는 프리미엄 뷰티 리포트
+        </div>
+        {/* 통계 */}
+        <div style={{ display:"flex", justifyContent:"center", gap:28, marginTop:20,
+          paddingTop:18, borderTop:`1px solid ${T.cardBdr}` }}>
+          {[["12,400+","누적 분석"],["98%","고객 만족"],["15Y","임상 경력"]].map(([num,lbl])=>(
+            <div key={lbl} style={{ textAlign:"center" }}>
+              <div style={{ fontFamily:T.fontDisp, fontSize:20, color:T.goldLt,
+                fontWeight:300, letterSpacing:1 }}>{num}</div>
+              <div style={{ fontSize:8, color:T.mink, letterSpacing:1.5,
+                textTransform:"uppercase", marginTop:2 }}>{lbl}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {phase==="loading" ? (
+        <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
+          justifyContent:"center", minHeight:"65vh", padding:"0 24px" }}>
+          {/* 골드 로딩 애니메이션 */}
+          <div style={{ display:"flex", gap:10, marginBottom:28 }}>
+            {[0,1,2,3,4].map(i=>(
+              <div key={i} style={{
+                width:2, height: 24 + i%3*8,
+                background:`linear-gradient(to top,${T.gold},${T.goldLt})`,
+                borderRadius:2, opacity:.7,
+                animation:`bcP 1.4s ease ${i*0.15}s infinite`
+              }}/>
+            ))}
+          </div>
+          <div style={{ fontFamily:T.fontDisp, fontSize:20, color:T.ivory,
+            fontWeight:300, marginBottom:8, textAlign:"center" }}>
+            분석 중입니다
+          </div>
+          <div style={{ fontSize:10, color:T.mink, letterSpacing:2,
+            textTransform:"uppercase", textAlign:"center", lineHeight:2 }}>
+            Facial Shape · Personal Color · Eyebrow<br/>
+            Lip Blush · SMP · Hair Style
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding:"20px 16px" }}>
+          {/* 업로드 카드 */}
+          <div style={{ background:T.card, borderRadius:16, padding:16,
+            border:`1px solid ${T.cardBdr}`, marginBottom:14,
+            boxShadow:"0 4px 32px rgba(0,0,0,.4)" }}>
+
             <div onClick={()=>fileRef.current.click()} style={{
-              border:`2px dashed ${imgSrc?"#c4956a":"#ddd8d0"}`,
-              borderRadius:12,padding:imgSrc?10:"40px 20px",
-              cursor:"pointer",background:"#faf8f5",textAlign:"center",marginBottom:14}}>
-              {imgSrc
-                ?<img src={imgSrc} style={{maxHeight:280,borderRadius:8,maxWidth:"100%",display:"block",margin:"0 auto"}}/>
-                :<>
-                  <div style={{fontSize:48,marginBottom:10}}>📸</div>
-                  <div style={{fontSize:14,fontWeight:600,color:"#5a4a42",marginBottom:4}}>고객 정면 사진 업로드</div>
-                  <div style={{fontSize:12,color:"#b0968a"}}>자연광 · 정면 · 무표정 권장</div>
-                </>}
+              border:`1px dashed ${imgSrc ? T.gold : T.cardBdr}`,
+              borderRadius:12, padding:imgSrc ? 8 : "36px 20px",
+              cursor:"pointer", background:T.bg2, textAlign:"center", marginBottom:14,
+              transition:"border-color .2s" }}>
+              {imgSrc ? (
+                <img src={imgSrc} style={{ maxHeight:260, borderRadius:10,
+                  maxWidth:"100%", display:"block", margin:"0 auto" }}/>
+              ) : (
+                <>
+                  <div style={{ width:48, height:48, borderRadius:"50%",
+                    background:`rgba(201,169,110,.1)`, border:`1px solid ${T.cardBdr}`,
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    margin:"0 auto 14px", fontSize:20 }}>📷</div>
+                  <div style={{ fontFamily:T.fontDisp, fontSize:16, color:T.ivory,
+                    fontWeight:300, marginBottom:6 }}>고객 정면 사진 업로드</div>
+                  <div style={{ fontSize:9, color:T.mink, letterSpacing:1.5,
+                    textTransform:"uppercase" }}>자연광 · 정면 · 무표정 권장</div>
+                </>
+              )}
             </div>
             <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}}
               onChange={e=>handleFile(e.target.files[0])}/>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:14}}>
-              {[["🔍","얼굴형·성별"],["🎨","퍼스널컬러"],["✦","눈썹"],
-                ["💋","립 블러쉬"],["💆","SMP"],["✂️","헤어"]].map(([e,l])=>(
-                <div key={l} style={{textAlign:"center",padding:"10px 6px",
-                  background:"#faf8f5",borderRadius:10,border:"1px solid #ede4dc"}}>
-                  <div style={{fontSize:18,marginBottom:3}}>{e}</div>
-                  <div style={{fontSize:9,color:"#9e8a7e"}}>{l}</div>
+
+            {/* 분석 항목 */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)",
+              gap:6, marginBottom:14 }}>
+              {[["✦","얼굴형·성별"],["◈","퍼스널컬러"],["⌇","눈썹"],
+                ["◉","립 블러쉬"],["◎","SMP"],["✂","헤어"]].map(([ic,lb])=>(
+                <div key={lb} style={{ textAlign:"center", padding:"10px 4px",
+                  background:T.bg2, borderRadius:10, border:`1px solid ${T.cardBdr}` }}>
+                  <div style={{ fontSize:12, color:T.gold, marginBottom:3 }}>{ic}</div>
+                  <div style={{ fontSize:8, color:T.minkLt, letterSpacing:.5 }}>{lb}</div>
                 </div>
               ))}
             </div>
-            {error&&<div style={{color:"#e07070",fontSize:12,textAlign:"center",marginBottom:10,lineHeight:1.5}}>{error}</div>}
+
+            {error && (
+              <div style={{ fontSize:11, color:T.err, textAlign:"center",
+                marginBottom:10, lineHeight:1.6, padding:"8px 12px",
+                background:"rgba(180,80,60,.08)", borderRadius:8,
+                border:"1px solid rgba(180,80,60,.2)" }}>{error}</div>
+            )}
+
+            {/* 분석 버튼 */}
             <button onClick={analyze} disabled={!imgFile} style={{
-              width:"100%",padding:15,borderRadius:12,border:"none",
-              background:imgFile?"linear-gradient(135deg,#8b6f5e,#c4956a)":"#ddd",
-              color:"#fff",fontSize:15,fontWeight:700,cursor:imgFile?"pointer":"not-allowed",
-              boxShadow:imgFile?"0 4px 16px rgba(196,149,106,.4)":"none"}}>
-              ✨ AI 종합 분석 시작
+              width:"100%", padding:"15px 0", borderRadius:50, border:"none",
+              background: imgFile
+                ? `linear-gradient(135deg,${T.gold},#A8824A)`
+                : "rgba(255,255,255,.06)",
+              color: imgFile ? T.bg : T.mink,
+              fontFamily:T.fontBody, fontSize:13, fontWeight:500,
+              letterSpacing:2, textTransform:"uppercase",
+              cursor:imgFile?"pointer":"not-allowed",
+              boxShadow:imgFile?`0 6px 28px rgba(201,169,110,.35)`:"none",
+              transition:"all .2s" }}>
+              {imgFile ? "무료 AI 분석 시작" : "사진을 업로드해 주세요"}
             </button>
+          </div>
+
+          {/* 하단 안내 */}
+          <div style={{ textAlign:"center", padding:"8px 0" }}>
+            <div style={{ fontSize:8, color:T.mink, letterSpacing:1.5,
+              textTransform:"uppercase", lineHeight:2 }}>
+              분석 결과는 참고용이며 실제 시술 결과와 다를 수 있습니다
+            </div>
           </div>
         </div>
       )}
